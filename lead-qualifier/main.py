@@ -9,9 +9,15 @@ from datetime import date
 from pathlib import Path
 from typing import List, Optional
 
+from dotenv import load_dotenv
+
 from utils.data_loader import load_leads, get_validation_summary
 from utils.rubric_engine import load_rubric, score_leads_batch
-from utils.models import LeadScore
+from utils.llm_client import enrich_leads_with_llm
+from utils.models import LeadScore, LeadResult
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def setup_logging(verbose: bool = False):
@@ -85,20 +91,20 @@ def load_reference_date(date_str: Optional[str]) -> date:
     return date.today()
 
 
-def build_report(lead_scores: List[LeadScore], metadata: dict) -> dict:
-    """Build the output report from scored leads."""
+def build_report(lead_results: List[LeadResult], metadata: dict) -> dict:
+    """Build the output report from enriched lead results."""
     # Summary statistics
-    total = len(lead_scores)
-    qualified = sum(1 for ls in lead_scores if ls.decision == "QUALIFIED")
-    review = sum(1 for ls in lead_scores if ls.decision == "REVIEW")
-    rejected = sum(1 for ls in lead_scores if ls.decision == "REJECTED")
+    total = len(lead_results)
+    qualified = sum(1 for lr in lead_results if lr.score.decision == "QUALIFIED")
+    review = sum(1 for lr in lead_results if lr.score.decision == "REVIEW")
+    rejected = sum(1 for lr in lead_results if lr.score.decision == "REJECTED")
     
     # Common rejection reasons (simplified)
     rejection_reasons = {}
-    for ls in lead_scores:
-        if ls.decision == "REJECTED":
+    for lr in lead_results:
+        if lr.score.decision == "REJECTED":
             # Find lowest scoring factor
-            lowest = min(ls.factor_scores, key=lambda fs: fs.raw_score)
+            lowest = min(lr.score.factor_scores, key=lambda fs: fs.raw_score)
             reason = f"Low {lowest.name.replace('_', ' ')} ({lowest.raw_score})"
             rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
     
@@ -108,44 +114,58 @@ def build_report(lead_scores: List[LeadScore], metadata: dict) -> dict:
     # Priority queue (sorted by score descending)
     priority_queue = [
         {
-            "name": ls.lead.name,
-            "company": ls.lead.company,
-            "score": ls.total_score,
-            "priority": ls.priority
+            "name": lr.lead.name,
+            "company": lr.lead.company,
+            "score": lr.score.total_score,
+            "priority": lr.score.priority
         }
-        for ls in sorted(lead_scores, key=lambda x: -x.total_score)
+        for lr in sorted(lead_results, key=lambda x: -x.score.total_score)
     ]
     
-    # Leads detail
-    leads_detail = [ls.to_dict() for ls in lead_scores]
+    # Leads detail with LLM reasoning
+    leads_detail = []
+    for lr in lead_results:
+        lead_dict = lr.score.to_dict()
+        if lr.llm_reasoning:
+            lead_dict["llm_reasoning"] = lr.llm_reasoning
+        leads_detail.append(lead_dict)
     
     # Sample outreach messages (top 5 qualified)
-    qualified_leads = [ls for ls in lead_scores if ls.decision == "QUALIFIED"]
+    qualified_results = [lr for lr in lead_results if lr.score.decision == "QUALIFIED"]
     sample_messages = []
-    for ls in qualified_leads[:5]:
+    for lr in qualified_results[:5]:
         sample_messages.append({
-            "lead": ls.lead.name,
-            "message": f"[Sample] Personalized outreach for {ls.lead.name} at {ls.lead.company}..."
+            "lead": lr.lead.name,
+            "message": f"[Sample] Personalized outreach for {lr.lead.name} at {lr.lead.company}..."
         })
     
     # Flagged for review (missing data but scored)
     flagged = []
-    for ls in lead_scores:
+    for lr in lead_results:
         issues = []
-        if ls.lead.company_size is None:
+        if lr.lead.company_size is None:
             issues.append("Missing company_size")
-        if not ls.lead.industry:
+        if not lr.lead.industry:
             issues.append("Missing industry")
-        if not ls.lead.source:
+        if not lr.lead.source:
             issues.append("Missing source")
-        if ls.lead.last_interaction_date is None:
+        if lr.lead.last_interaction_date is None:
             issues.append("Missing last_interaction_date")
         if issues:
             flagged.append({
-                "name": ls.lead.name,
-                "company": ls.lead.company,
+                "name": lr.lead.name,
+                "company": lr.lead.company,
                 "issue": "; ".join(issues),
-                "score": ls.total_score
+                "score": lr.score.total_score
+            })
+    
+    # Errors (LLM enrichment failures)
+    errors = []
+    for lr in lead_results:
+        if lr.error:
+            errors.append({
+                "lead": lr.lead.name,
+                "error": lr.error
             })
     
     return {
@@ -162,7 +182,7 @@ def build_report(lead_scores: List[LeadScore], metadata: dict) -> dict:
         "priority_queue": priority_queue,
         "sample_outreach_messages": sample_messages,
         "flagged_for_review": flagged,
-        "errors": []  # Will be populated if any leads fail completely
+        "errors": errors
     }
 
 
@@ -207,6 +227,33 @@ def main():
     lead_scores = score_leads_batch(leads, rubric, reference_date)
     logger.info(f"Scored {len(lead_scores)} leads")
     
+    # LLM Enrichment (unless --no-llm flag)
+    llm_enrichments = {}
+    if not args.no_llm:
+        try:
+            logger.info("Starting LLM enrichment...")
+            enrichments = enrich_leads_with_llm(leads, rubric)
+            # Map by name for lookup
+            llm_enrichments = {e["name"]: e for e in enrichments}
+            logger.info(f"LLM enrichment complete for {len(enrichments)} leads")
+        except Exception as e:
+            logger.warning(f"LLM enrichment failed: {e}. Continuing with deterministic scores only.")
+            llm_enrichments = {}
+    else:
+        logger.info("Skipping LLM enrichment (--no-llm flag)")
+    
+    # Build LeadResult objects with LLM enrichment
+    lead_results = []
+    for ls in lead_scores:
+        enrichment = llm_enrichments.get(ls.lead.name, {})
+        lead_results.append(LeadResult(
+            lead=ls.lead,
+            score=ls,
+            llm_reasoning=enrichment.get("reasoning"),
+            outreach_message=None,  # Will be generated in Phase 5
+            error=None
+        ))
+    
     # Build report
     metadata = {
         "processed_at": date.today().isoformat(),
@@ -216,7 +263,7 @@ def main():
         "reference_date": reference_date.isoformat()
     }
     
-    report = build_report(lead_scores, metadata)
+    report = build_report(lead_results, metadata)
     
     # Write output
     try:
