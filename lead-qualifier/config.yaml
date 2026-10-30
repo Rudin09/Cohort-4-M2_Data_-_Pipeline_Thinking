@@ -1,0 +1,69 @@
+rubric:
+  company_size:
+    weight: 0.25
+    tiers:
+      - range: [50, 5000]
+        score: 10
+      - range: [11, 49]
+        score: 7
+      - range: [5001, 10000]
+        score: 6
+      - range: [1, 10]
+        score: 4
+      - default: 3
+
+  industry:
+    weight: 0.25
+    tiers:
+      - industries: [SaaS, FinTech, HealthTech, Cybersecurity, AI/ML, Software]
+        score: 10
+      - industries: [Finance, Healthcare, Logistics, Manufacturing, EdTech]
+        score: 7
+      - industries: [Retail, Consulting, Marketing, Real Estate, Energy]
+        score: 5
+      - default: 3
+
+  recency:
+    weight: 0.20
+    tiers:
+      - days: [0, 30]
+        score: 10
+      - days: [31, 60]
+        score: 7
+      - days: [61, 90]
+        score: 5
+      - default: 3
+
+  source_quality:
+    weight: 0.15
+    tiers:
+      - sources: [Inbound demo request, Referral]
+        score: 10
+      - sources: [Sales call, Webinar attendee]
+        score: 7
+      - sources: [Content download, LinkedIn outreach]
+        score: 5
+      - default: 3
+
+  budget_signals:
+    weight: 0.15
+    tiers:
+      - score: 10
+        condition: "company_size >= 50 and industry in [SaaS, FinTech, HealthTech, Cybersecurity] and source in [Inbound demo request, Referral]"
+      - score: 7
+        condition: "company_size >= 50 and industry in [Finance, Healthcare, Software]"
+      - score: 5
+        condition: "company_size >= 11"
+      - default: 3
+
+thresholds:
+  qualified: 75
+  review: 50
+  rejected: 0
+
+llm:
+  provider: "groq"
+  model: "llama-3.1-70b-versatile"
+  batch_size: 15
+  timeout: 30
+  temperature: 0.3
