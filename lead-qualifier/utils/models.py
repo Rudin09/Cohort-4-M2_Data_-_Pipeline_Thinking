@@ -1,8 +1,8 @@
 """Data models for Lead Intelligence System."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -16,7 +16,7 @@ class Lead:
     last_interaction_date: Optional[date]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Lead":
+    def from_dict(cls, data: Dict[str, Any]) -> "Lead":
         """Create Lead from dictionary (e.g., CSV row)."""
         return cls(
             name=data.get("name", ""),
@@ -42,11 +42,11 @@ class LeadScore:
     """Complete scoring result for a lead."""
     lead: Lead
     factor_scores: List[FactorScore]
-    total_score: float      # 0-100
+    total_score: float      # 1-10 weighted average
     decision: str           # QUALIFIED / REVIEW / REJECTED
     priority: str           # HIGH / MEDIUM / LOW
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "name": self.lead.name,
@@ -71,5 +71,6 @@ class LeadResult:
     lead: Lead
     score: LeadScore
     llm_reasoning: Optional[str] = None
+    llm_review_note: Optional[str] = None
     outreach_message: Optional[str] = None
     error: Optional[str] = None

@@ -397,11 +397,10 @@ TEMPLATES = {
 Hi {name},
 
 I noticed {company} ({industry}, {size} employees) recently {source_detail}.
-Given your focus on {industry_specific_pain_point}, I thought you'd find 
-our {product_value_prop} relevant.
+If {industry_specific_pain_point} is a priority for your team, our
+{product_value_prop} may be relevant.
 
-Would you be open to a brief call this week to explore how we've helped 
-similar {industry} companies like {reference_customer}?
+Would you be open to a brief conversation to explore whether this could be a fit?
 
 Best,
 [Your Name]
@@ -416,11 +415,11 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
     # Return no outreach draft for REVIEW or REJECTED leads
     # Use the qualified_first_touch template for QUALIFIED leads
     # Fill in lead-specific details:
-    #   - name, company, industry, company_size
-    #   - source_detail: e.g., "requested a demo", "attended our webinar"
+    #   - name, company, and supplied industry/company_size details
+    #   - include a source_detail only when the source is recognized
     #   - industry_specific_pain_point: map industry to pain point
-    #   - reference_customer: pick from known customers in same industry
-    # Avoid inventing customer names, facts, or personal interests
+    #   - include a named reference only when verified, approved customer data is supplied
+    # Otherwise omit reference claims; do not invent customer names, facts, or interests
     # Return a draft for human review; do not send it
 ```
 

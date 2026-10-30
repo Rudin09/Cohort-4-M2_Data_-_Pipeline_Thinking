@@ -49,17 +49,17 @@ rubric:
     weight: 0.15
     tiers:
       - score: 10
-        condition: "company_size >= 50 and industry in [SaaS, FinTech, HealthTech, Cybersecurity] and source in [Inbound demo request, Referral]"
+        condition: "company_size >= 50 and industry in ['SaaS', 'FinTech', 'HealthTech', 'Cybersecurity'] and source in ['Inbound demo request', 'Referral']"
       - score: 7
-        condition: "company_size >= 50 and industry in [Finance, Healthcare, Software]"
+        condition: "company_size >= 50 and industry in ['Finance', 'Healthcare', 'Software']"
       - score: 5
         condition: "company_size >= 11"
       - default: 3
 
 thresholds:
-  qualified: 75
-  review: 50
-  rejected: 0
+  qualified: 7.5
+  review: 5.0
+  rejected_below: 5.0
 
 llm:
   provider: "groq"

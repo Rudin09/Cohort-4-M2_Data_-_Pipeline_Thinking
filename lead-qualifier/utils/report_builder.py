@@ -1,10 +1,25 @@
 """Report Builder for Lead Intelligence System."""
 
 import json
-from datetime import date
 from typing import List, Dict, Any
-from utils.models import LeadResult, LeadScore
-from utils.message_generator import generate_all_outreach
+from utils.models import LeadResult
+from utils.message_generator import generate_outreach
+
+
+def _build_deterministic_reasoning(lead_result: LeadResult) -> str:
+    """Explain a rubric result using its recorded factor scores."""
+    factors = sorted(
+        lead_result.score.factor_scores,
+        key=lambda factor: (-factor.raw_score, factor.name),
+    )
+    factor_summary = ", ".join(
+        f"{factor.name.replace('_', ' ')} {factor.raw_score}/10"
+        for factor in factors
+    )
+    return (
+        f"The deterministic rubric assigned {lead_result.score.total_score:.1f}/10 "
+        f"and {lead_result.score.decision}. Factor scores: {factor_summary}."
+    )
 
 
 def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -23,6 +38,9 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     qualified = sum(1 for lr in results if lr.score.decision == "QUALIFIED")
     review = sum(1 for lr in results if lr.score.decision == "REVIEW")
     rejected = sum(1 for lr in results if lr.score.decision == "REJECTED")
+    lead_ids = {
+        id(lr): f"lead-{index:06d}" for index, lr in enumerate(results)
+    }
     
     # Common rejection reasons
     rejection_reasons = {}
@@ -38,39 +56,79 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     # Priority queue (sorted by score descending)
     priority_queue = [
         {
+            "lead_id": lead_ids[id(lr)],
             "name": lr.lead.name,
             "company": lr.lead.company,
             "score": lr.score.total_score,
             "priority": lr.score.priority
         }
         for lr in sorted(results, key=lambda x: -x.score.total_score)
+        if lr.score.decision == "QUALIFIED"
     ]
     
-    # Leads detail with LLM reasoning
+    # Generate a draft only for qualified leads and attach it to the lead detail.
     leads_detail = []
     for lr in results:
         lead_dict = lr.score.to_dict()
+        lead_dict["lead_id"] = lead_ids[id(lr)]
+        lead_dict["reasoning"] = _build_deterministic_reasoning(lr)
         if lr.llm_reasoning:
             lead_dict["llm_reasoning"] = lr.llm_reasoning
+        if lr.llm_review_note:
+            lead_dict["llm_review_note"] = lr.llm_review_note
+        outreach_message = generate_outreach(lr.lead, lr.score)
+        lead_dict["outreach_message"] = outreach_message
+        lr.outreach_message = outreach_message
         leads_detail.append(lead_dict)
-    
-    # Generate personalized outreach messages
-    leads_with_scores = [(lr.lead, lr.score) for lr in results]
-    outreach_messages = generate_all_outreach(leads_with_scores)
-    
-    # Sample outreach messages (top 5 qualified)
-    qualified_results = [lr for lr in results if lr.score.decision == "QUALIFIED"]
+
+    # Prefer different industry/source combinations in the analyst examples.
+    qualified_results = [
+        lr for lr in results
+        if lr.score.decision == "QUALIFIED" and lr.outreach_message is not None
+    ]
+    ordered_qualified = sorted(
+        qualified_results,
+        key=lambda lr: (-lr.score.total_score, lr.lead.name, lr.lead.company),
+    )
+    sample_results = []
+    seen_segments = set()
+    for lr in ordered_qualified:
+        segment = (lr.lead.industry or "Unknown", lr.lead.source or "Unknown")
+        if segment not in seen_segments:
+            sample_results.append(lr)
+            seen_segments.add(segment)
+        if len(sample_results) == 5:
+            break
+    if len(sample_results) < 5:
+        selected = {id(lr) for lr in sample_results}
+        sample_results.extend(
+            lr for lr in ordered_qualified
+            if id(lr) not in selected
+        )
+        sample_results = sample_results[:5]
+
     sample_messages = []
-    for lr in qualified_results[:5]:
+    for lr in sample_results:
         sample_messages.append({
+            "lead_id": lead_ids[id(lr)],
             "lead": lr.lead.name,
-            "message": outreach_messages.get(lr.lead.name, "")
+            "company": lr.lead.company,
+            "industry": lr.lead.industry,
+            "source": lr.lead.source,
+            "priority": lr.score.priority,
+            "message": lr.outreach_message
         })
     
-    # Flagged for review (missing data but scored)
+    # Flag every REVIEW decision and any lead with incomplete data.
     flagged = []
     for lr in results:
         issues = []
+        if lr.score.decision == "REVIEW":
+            issues.append("Requires human review")
+        if not (lr.lead.name or "").strip():
+            issues.append("Missing required name")
+        if not (lr.lead.company or "").strip():
+            issues.append("Missing required company")
         if lr.lead.company_size is None:
             issues.append("Missing company_size")
         if not lr.lead.industry:
@@ -79,8 +137,13 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
             issues.append("Missing source")
         if lr.lead.last_interaction_date is None:
             issues.append("Missing last_interaction_date")
+        if lr.llm_review_note:
+            issues.append(f"LLM review note: {lr.llm_review_note}")
+        if lr.error:
+            issues.append("LLM enrichment failed; review deterministic result")
         if issues:
             flagged.append({
+                "lead_id": lead_ids[id(lr)],
                 "name": lr.lead.name,
                 "company": lr.lead.company,
                 "issue": "; ".join(issues),
@@ -92,7 +155,9 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     for lr in results:
         if lr.error:
             errors.append({
+                "lead_id": lead_ids[id(lr)],
                 "lead": lr.lead.name,
+                "company": lr.lead.company,
                 "error": lr.error
             })
     
@@ -114,7 +179,7 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     }
 
 
-def write_report(report: Dict[str, Any], output_path: str):
+def write_report(report: Dict[str, Any], output_path: str) -> None:
     """Write report to JSON file."""
     with open(output_path, "w") as f:
         json.dump(report, f, indent=2, default=str)

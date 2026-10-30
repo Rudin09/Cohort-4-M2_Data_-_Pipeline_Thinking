@@ -1,341 +1,450 @@
-"""LLM Client for batched lead qualification with retry logic."""
+"""LLM client for batched lead explanations and review notes."""
 
-import os
 import json
 import logging
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import os
+import re
+from datetime import date
+from typing import Any, Dict, List, Optional, Sequence
 
-from utils.models import Lead
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from utils.models import Lead, LeadScore
+from utils.rubric_engine import score_leads_batch
 
 logger = logging.getLogger(__name__)
 
 
-# ============================================================
-# Batched Prompt Template
-# ============================================================
+BATCH_PROMPT = """You are a B2B sales analyst. For each lead, explain the deterministic
+qualification result and identify any human-review note. Do not recalculate or change
+the score, decision, or priority. Use only facts supplied in the input; do not infer
+customer interests, budgets, or facts that are not present.
 
-BATCH_PROMPT = """You are a B2B sales qualification expert. Analyze these {n} leads and for each provide:
-1. Qualification score (1-10) based on the rubric
-2. Decision: QUALIFIED / REVIEW / REJECTED
-3. Reasoning (2-3 sentences referencing specific lead details)
-4. Priority rank (HIGH/MEDIUM/LOW)
+Use this configured rubric to explain the supplied result:
+{rubric_summary}
 
-Rubric:
-- Company size fit (25%): 50-5000 employees ideal
-- Industry alignment (25%): SaaS, FinTech, HealthTech, Cybersecurity preferred
-- Engagement recency (20%): <30 days = high intent
-- Source quality (15%): Inbound demo > Referral > Webinar > Content > LinkedIn
-- Buying signals (15%): Composite of above
+Return exactly one JSON object per lead in a JSON array, with these fields only:
+"lead_id", "reasoning", and "review_note". "lead_id" must exactly match the input.
+"reasoning" must be 1-3 concise sentences grounded in the supplied details and rubric
+factor scores. "review_note" must be a short note for a human reviewer, or an empty
+string when no additional review note is needed.
 
-Leads:
+There are {n} leads. The input follows:
 {leads_json}
+"""
 
-Output as JSON array with fields: name, company, score, decision, reasoning, priority"""
+STRICT_BATCH_PROMPT = """Return valid JSON only: a JSON array with exactly {n} objects.
+Each object must contain exactly the string fields "lead_id", "reasoning", and
+"review_note". Preserve every input lead_id exactly once. Do not include scores,
+decisions, priorities, markdown, or commentary.
+
+Input:
+{leads_json}
+"""
 
 
-# ============================================================
-# Provider Abstract Base Class
-# ============================================================
+class InvalidLLMResponse(ValueError):
+    """Raised when a provider response does not match the enrichment contract."""
 
-class LLMProvider(ABC):
-    """Abstract base class for LLM providers."""
-    
-    @abstractmethod
-    def call_batch(self, leads: List[Lead], config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Call LLM with a batch of leads."""
-        pass
-    
-    def _format_leads_for_prompt(self, leads: List[Lead]) -> str:
-        """Format leads as JSON for prompt."""
-        leads_data = []
-        for lead in leads:
-            leads_data.append({
-                "name": lead.name,
-                "company": lead.company,
-                "company_size": lead.company_size,
-                "industry": lead.industry,
-                "source": lead.source,
-                "last_interaction_date": str(lead.last_interaction_date) if lead.last_interaction_date else None
-            })
-        return json.dumps(leads_data, indent=2)
-    
-    def _parse_response(self, response_text: str, expected_count: int) -> List[Dict[str, Any]]:
-        """Parse LLM response into structured data."""
+
+class PartialLLMResponse(InvalidLLMResponse):
+    """Raised when a response contains valid results but omits some lead IDs."""
+
+    def __init__(
+        self, results: List[Dict[str, str]], missing_ids: Sequence[str]
+    ) -> None:
+        super().__init__("Provider response omitted or invalidated lead results")
+        self.results = results
+        self.missing_ids = list(missing_ids)
+
+
+class LLMProvider:
+    """OpenAI-compatible chat-completion provider."""
+
+    def __init__(
+        self,
+        client: Any,
+        model: str,
+        timeout: int,
+        temperature: float,
+    ) -> None:
+        self.client = client
+        self.model = model
+        self.timeout = timeout
+        self.temperature = temperature
+
+    def call_batch(
+        self,
+        leads: Sequence[Lead],
+        lead_scores: Sequence[LeadScore],
+        lead_ids: Sequence[str],
+        config: Dict[str, Any],
+        strict_prompt: bool = False,
+    ) -> List[Dict[str, str]]:
+        """Request explanation-only enrichment for a batch."""
+        prompt = STRICT_BATCH_PROMPT if strict_prompt else BATCH_PROMPT
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": prompt.format(
+                        n=len(leads),
+                        rubric_summary=self._format_rubric(config),
+                        leads_json=self._format_leads(
+                            leads, lead_scores, lead_ids
+                        ),
+                    ),
+                }
+            ],
+            temperature=self.temperature,
+            timeout=self.timeout,
+        )
         try:
-            # Try to extract JSON from response - handle multiple formats
-            # 1. Try direct JSON parse first
-            try:
-                results = json.loads(response_text)
-                if isinstance(results, list):
-                    return self._validate_results(results, expected_count)
-            except json.JSONDecodeError:
-                pass
-            
-            # 2. Try to find JSON array in response
-            start = response_text.find('[')
-            end = response_text.rfind(']') + 1
-            if start >= 0 and end > start:
-                json_str = response_text[start:end]
-                results = json.loads(json_str)
-                return self._validate_results(results, expected_count)
-            
-            # 3. Try to find JSON object with 'results' or 'leads' key
-            import re
-            json_patterns = [
-                r'\{.*?"(?:results|leads|data)"\s*:\s*(\[.*?\])\}',
-                r'(\[.*?\])'
+            response_text = response.choices[0].message.content
+        except (AttributeError, IndexError, TypeError) as exc:
+            raise InvalidLLMResponse("Provider response did not contain message text") from exc
+        return self._parse_response(response_text, lead_ids)
+
+    @staticmethod
+    def _format_rubric(config: Dict[str, Any]) -> str:
+        return json.dumps(
+            {
+                "factors": config.get("rubric", {}),
+                "thresholds": config.get("thresholds", {}),
+            },
+            indent=2,
+        )
+
+    @staticmethod
+    def _format_leads(
+        leads: Sequence[Lead],
+        lead_scores: Sequence[LeadScore],
+        lead_ids: Sequence[str],
+    ) -> str:
+        rows = []
+        for lead, score, lead_id in zip(leads, lead_scores, lead_ids):
+            rows.append(
+                {
+                    "lead_id": lead_id,
+                    "name": lead.name,
+                    "company": lead.company,
+                    "company_size": lead.company_size,
+                    "industry": lead.industry,
+                    "source": lead.source,
+                    "last_interaction_date": (
+                        lead.last_interaction_date.isoformat()
+                        if lead.last_interaction_date
+                        else None
+                    ),
+                    "deterministic_score": score.total_score,
+                    "deterministic_decision": score.decision,
+                    "deterministic_priority": score.priority,
+                    "factor_scores": {
+                        factor.name: factor.raw_score
+                        for factor in score.factor_scores
+                    },
+                }
+            )
+        return json.dumps(rows, indent=2)
+
+    @classmethod
+    def _parse_response(
+        cls, response_text: Any, expected_ids: Sequence[str]
+    ) -> List[Dict[str, str]]:
+        if not isinstance(response_text, str):
+            raise InvalidLLMResponse("Provider response was not text")
+
+        text = response_text.strip()
+        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+        if fenced:
+            text = fenced.group(1)
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise InvalidLLMResponse("Provider response was not valid JSON") from exc
+
+        if isinstance(parsed, dict):
+            parsed = parsed.get("results", parsed.get("leads"))
+        if not isinstance(parsed, list):
+            raise InvalidLLMResponse("Provider response must be a JSON array")
+        return cls._validate_results(parsed, expected_ids)
+
+    @staticmethod
+    def _validate_results(
+        results: List[Any], expected_ids: Sequence[str]
+    ) -> List[Dict[str, str]]:
+        expected = set(expected_ids)
+        cleaned: Dict[str, Dict[str, str]] = {}
+        invalid_ids = set()
+        allowed_fields = {"lead_id", "reasoning", "review_note"}
+
+        for result in results:
+            if not isinstance(result, dict):
+                raise InvalidLLMResponse("Every result must be a JSON object")
+            lead_id = result.get("lead_id")
+            if not isinstance(lead_id, str) or lead_id not in expected:
+                raise InvalidLLMResponse("Response contains an unknown lead_id")
+            if lead_id in invalid_ids:
+                continue
+            if lead_id in cleaned:
+                del cleaned[lead_id]
+                invalid_ids.add(lead_id)
+                continue
+            reasoning = result.get("reasoning")
+            review_note = result.get("review_note")
+            if (
+                not set(result).issubset(allowed_fields)
+                or not isinstance(reasoning, str)
+                or not reasoning.strip()
+                or not isinstance(review_note, str)
+            ):
+                invalid_ids.add(lead_id)
+                continue
+            cleaned[lead_id] = {
+                "lead_id": lead_id,
+                "reasoning": reasoning.strip(),
+                "review_note": review_note.strip(),
+            }
+
+        missing_ids = [lead_id for lead_id in expected_ids if lead_id not in cleaned]
+        if missing_ids:
+            ordered_results = [
+                cleaned[lead_id] for lead_id in expected_ids if lead_id in cleaned
             ]
-            for pattern in json_patterns:
-                matches = re.findall(pattern, response_text, re.DOTALL)
-                for match in matches:
-                    try:
-                        results = json.loads(match)
-                        if isinstance(results, list):
-                            return self._validate_results(results, expected_count)
-                    except json.JSONDecodeError:
-                        continue
-            
-            raise json.JSONDecodeError("No valid JSON array found in response", response_text, 0)
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response: {e}")
-            logger.debug(f"Response text: {response_text[:1000]}")
-            raise
-    
-    def _validate_results(self, results: List[Dict[str, Any]], expected_count: int) -> List[Dict[str, Any]]:
-        """Validate and clean parsed results."""
-        if not isinstance(results, list):
-            raise ValueError("Parsed JSON is not a list")
-        
-        # Clean each result
-        cleaned = []
-        for r in results:
-            if isinstance(r, dict):
-                # Ensure required fields
-                cleaned.append({
-                    "name": r.get("name", ""),
-                    "company": r.get("company", ""),
-                    "score": r.get("score", 5),
-                    "decision": r.get("decision", "REVIEW"),
-                    "reasoning": r.get("reasoning", "No reasoning provided"),
-                    "priority": r.get("priority", "MEDIUM")
-                })
-        
-        if len(cleaned) != expected_count:
-            logger.warning(f"Expected {expected_count} results, got {len(cleaned)}")
-        
-        return cleaned
+            raise PartialLLMResponse(ordered_results, missing_ids)
+        return [cleaned[lead_id] for lead_id in expected_ids]
 
-
-# ============================================================
-# Groq Provider Implementation
-# ============================================================
 
 class GroqProvider(LLMProvider):
-    """Groq API provider for fast, free-tier inference."""
-    
-    def __init__(self, api_key: str, model: str, timeout: int = 30, temperature: float = 0.3):
-        from groq import Groq
-        self.client = Groq(api_key=api_key)
-        self.model = model
-        self.timeout = timeout
-        self.temperature = temperature
-    
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((Exception,)),  # Groq raises generic exceptions
-        reraise=True
-    )
-    def call_batch(self, leads: List[Lead], config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Call Groq API with batched leads."""
-        leads_json = self._format_leads_for_prompt(leads)
-        prompt = BATCH_PROMPT.format(n=len(leads), leads_json=leads_json)
-        
-        logger.info(f"Calling Groq API with {len(leads)} leads (model: {self.model})")
-        
+    """Groq-backed provider."""
+
+    def __init__(
+        self, api_key: str, model: str, timeout: int, temperature: float
+    ) -> None:
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a B2B sales qualification expert. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=4000,
-                timeout=self.timeout
-            )
-            
-            response_text = response.choices[0].message.content
-            results = self._parse_response(response_text, len(leads))
-            
-            logger.info(f"Groq API returned {len(results)} results")
-            return results
-            
-        except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            raise
+            from groq import Groq
+        except ImportError as exc:
+            raise RuntimeError(
+                "Groq provider requires the 'groq' package; install requirements.txt"
+            ) from exc
+        super().__init__(Groq(api_key=api_key), model, timeout, temperature)
 
-
-# ============================================================
-# OpenAI Provider Implementation (for future use)
-# ============================================================
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI API provider."""
-    
-    def __init__(self, api_key: str, model: str, timeout: int = 30, temperature: float = 0.3):
-        import openai
-        self.client = openai.OpenAI(api_key=api_key)
-        self.model = model
-        self.timeout = timeout
-        self.temperature = temperature
-    
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((Exception,)),
-        reraise=True
-    )
-    def call_batch(self, leads: List[Lead], config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        leads_json = self._format_leads_for_prompt(leads)
-        prompt = BATCH_PROMPT.format(n=len(leads), leads_json=leads_json)
-        
-        logger.info(f"Calling OpenAI API with {len(leads)} leads (model: {self.model})")
-        
+    """OpenAI-backed provider."""
+
+    def __init__(
+        self, api_key: str, model: str, timeout: int, temperature: float
+    ) -> None:
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a B2B sales qualification expert. Output only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.temperature,
-                max_tokens=4000,
-                timeout=self.timeout
-            )
-            
-            response_text = response.choices[0].message.content
-            results = self._parse_response(response_text, len(leads))
-            
-            logger.info(f"OpenAI API returned {len(results)} results")
-            return results
-            
-        except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise
+            from openai import OpenAI
+        except ImportError as exc:
+            raise RuntimeError(
+                "OpenAI provider requires the 'openai' package"
+            ) from exc
+        super().__init__(
+            OpenAI(api_key=api_key, timeout=timeout),
+            model,
+            timeout,
+            temperature,
+        )
 
-
-# ============================================================
-# Provider Factory
-# ============================================================
 
 def get_provider(config: Dict[str, Any]) -> LLMProvider:
-    """
-    Factory function to create LLM provider based on config.
-    
-    Args:
-        config: Full config.yaml dict with 'llm' section
-        
-    Returns:
-        LLMProvider instance
-    """
+    """Build the configured provider using an environment API key."""
     llm_config = config.get("llm", {})
     provider_name = llm_config.get("provider", "groq").lower()
     model = llm_config.get("model", "llama-3.1-70b-versatile")
-    timeout = llm_config.get("timeout", 30)
-    temperature = llm_config.get("temperature", 0.3)
-    
-    # Load API key from environment
-    api_key_map = {
-        "groq": "GROQ_API_KEY",
-        "openai": "OPENAI_API_KEY",
-        "gemini": "GEMINI_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY"
-    }
-    
-    env_var = api_key_map.get(provider_name)
-    if not env_var:
-        raise ValueError(f"Unknown provider: {provider_name}")
-    
-    api_key = os.getenv(env_var)
+    timeout = int(llm_config.get("timeout", 30))
+    temperature = float(llm_config.get("temperature", 0.3))
+    api_key_names = {"groq": "GROQ_API_KEY", "openai": "OPENAI_API_KEY"}
+    api_key_name = api_key_names.get(provider_name)
+    if api_key_name is None:
+        raise ValueError(f"Unknown or unsupported LLM provider: {provider_name}")
+    api_key = os.getenv(api_key_name)
     if not api_key:
-        raise ValueError(f"API key not found in environment: {env_var}")
-    
-    # Create provider
-    if provider_name == "groq":
-        return GroqProvider(api_key, model, timeout, temperature)
-    elif provider_name == "openai":
-        return OpenAIProvider(api_key, model, timeout, temperature)
-    else:
-        raise ValueError(f"Provider {provider_name} not yet implemented")
+        raise ValueError(f"API key not found in environment: {api_key_name}")
+    provider_type = GroqProvider if provider_name == "groq" else OpenAIProvider
+    return provider_type(api_key, model, timeout, temperature)
 
 
-# ============================================================
-# High-Level Batch Call Function
-# ============================================================
+def _is_retryable_provider_error(exc: BaseException) -> bool:
+    if isinstance(exc, (TimeoutError, ConnectionError)):
+        return True
+    provider_module = exc.__class__.__module__.split(".", 1)[0]
+    if provider_module not in {"groq", "openai"}:
+        return False
+    if type(exc).__name__ in {
+        "APIConnectionError",
+        "APITimeoutError",
+        "InternalServerError",
+        "RateLimitError",
+    }:
+        return True
+    return (
+        type(exc).__name__ == "APIStatusError"
+        and getattr(exc, "status_code", 0) >= 500
+    )
 
-def call_llm_batch(leads: List[Lead], provider: LLMProvider, config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Call LLM with a batch of leads, with error handling.
-    
-    Args:
-        leads: List of leads to qualify
-        provider: LLMProvider instance
-        config: Full config dict
-        
-    Returns:
-        List of result dicts with score, decision, reasoning, priority
-    """
+
+def _log_retry(retry_state: Any) -> None:
+    exception = retry_state.outcome.exception()
+    logger.warning(
+        "Retrying LLM request after attempt %s (%s)",
+        retry_state.attempt_number,
+        type(exception).__name__,
+    )
+
+
+@retry(
+    retry=retry_if_exception(_is_retryable_provider_error),
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    before_sleep=_log_retry,
+    reraise=True,
+)
+def _call_provider_with_retry(
+    provider: LLMProvider,
+    leads: Sequence[Lead],
+    scores: Sequence[LeadScore],
+    lead_ids: Sequence[str],
+    config: Dict[str, Any],
+    strict_prompt: bool,
+) -> List[Dict[str, str]]:
+    return provider.call_batch(leads, scores, lead_ids, config, strict_prompt)
+
+
+def call_llm_batch(
+    leads: Sequence[Lead],
+    scores: Sequence[LeadScore],
+    lead_ids: Sequence[str],
+    provider: LLMProvider,
+    config: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    """Call the provider, retrying malformed output once with a strict prompt."""
+    partial_results = None
+    try:
+        return _call_provider_with_retry(
+            provider, leads, scores, lead_ids, config, strict_prompt=False
+        )
+    except PartialLLMResponse as exc:
+        partial_results = exc.results
+        logger.warning(
+            "LLM response omitted %s leads; retrying with strict JSON instructions",
+            len(exc.missing_ids),
+        )
+    except InvalidLLMResponse:
+        logger.warning("LLM response schema invalid; retrying with strict JSON instructions")
+    try:
+        return _call_provider_with_retry(
+            provider, leads, scores, lead_ids, config, strict_prompt=True
+        )
+    except PartialLLMResponse as exc:
+        strict_by_id = {result["lead_id"]: result for result in exc.results}
+        initial_by_id = {
+            result["lead_id"]: result for result in (partial_results or [])
+        }
+        initial_by_id.update(strict_by_id)
+        return [
+            initial_by_id[lead_id]
+            for lead_id in lead_ids
+            if lead_id in initial_by_id
+        ]
+    except InvalidLLMResponse:
+        if partial_results is not None:
+            return partial_results
+        raise
+
+
+def _error_description(exc: Exception) -> str:
+    """Return a report-safe error without provider response text or credentials."""
+    if isinstance(exc, (ValueError, RuntimeError)):
+        return f"{type(exc).__name__}: {exc}"
+    return f"LLM enrichment failed ({type(exc).__name__})"
+
+
+def enrich_leads_with_llm(
+    leads: List[Lead],
+    config: Dict[str, Any],
+    lead_scores: Optional[List[LeadScore]] = None,
+    batch_size: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Enrich leads with LLM explanations; never accept LLM scoring decisions."""
     if not leads:
         return []
-    
+
+    if lead_scores is None:
+        lead_scores = score_leads_batch(leads, config, date.today())
+    if len(lead_scores) != len(leads):
+        raise ValueError("lead_scores must contain one deterministic score per lead")
+    for lead, score in zip(leads, lead_scores):
+        if lead != score.lead:
+            raise ValueError("lead_scores must be aligned with the supplied leads")
+
+    llm_config = config.get("llm", {})
+    effective_batch_size = (
+        batch_size if batch_size is not None else llm_config.get("batch_size", 15)
+    )
+    if type(effective_batch_size) is not int or effective_batch_size <= 0:
+        raise ValueError("LLM batch size must be a positive integer")
+
+    results: List[Dict[str, Any]] = [
+        {
+            "lead_id": f"lead-{index:06d}",
+            "name": lead.name,
+            "company": lead.company,
+            "reasoning": None,
+            "review_note": None,
+            "error": None,
+        }
+        for index, lead in enumerate(leads)
+    ]
+
     try:
-        results = provider.call_batch(leads, config)
+        provider = get_provider(config)
+    except Exception as exc:
+        error = _error_description(exc)
+        logger.error("LLM provider initialization failed: %s", error)
+        for result in results:
+            result["error"] = error
         return results
-    except Exception as e:
-        logger.error(f"LLM batch call failed after retries: {e}")
-        # Return empty results - caller should handle fallback
-        return []
 
+    for start in range(0, len(leads), effective_batch_size):
+        end = min(start + effective_batch_size, len(leads))
+        batch_ids = [result["lead_id"] for result in results[start:end]]
+        logger.info(
+            "Processing LLM batch %s (%s leads)",
+            start // effective_batch_size + 1,
+            end - start,
+        )
+        try:
+            batch_results = call_llm_batch(
+                leads[start:end],
+                lead_scores[start:end],
+                batch_ids,
+                provider,
+                config,
+            )
+        except Exception as exc:
+            error = _error_description(exc)
+            logger.error("LLM batch failed: %s", error)
+            for result in results[start:end]:
+                result["error"] = error
+            continue
 
-def enrich_leads_with_llm(leads: List[Lead], config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """
-    Enrich leads with LLM reasoning in batches.
-    
-    Args:
-        leads: List of leads to enrich
-        config: Full config dict
-        
-    Returns:
-        List of enrichment dicts (same order as input leads)
-    """
-    provider = get_provider(config)
-    batch_size = config.get("llm", {}).get("batch_size", 15)
-    
-    all_results = []
-    
-    for i in range(0, len(leads), batch_size):
-        batch = leads[i:i + batch_size]
-        logger.info(f"Processing batch {i//batch_size + 1}/{(len(leads)-1)//batch_size + 1} ({len(batch)} leads)")
-        
-        batch_results = call_llm_batch(batch, provider, config)
-        
-        # Ensure we have results for each lead
-        for j, lead in enumerate(batch):
-            if j < len(batch_results):
-                all_results.append(batch_results[j])
+        by_id = {result["lead_id"]: result for result in batch_results}
+        for result in results[start:end]:
+            if result["lead_id"] in by_id:
+                result.update(by_id[result["lead_id"]])
             else:
-                # Missing result - create fallback
-                all_results.append({
-                    "name": lead.name,
-                    "company": lead.company,
-                    "score": 5,
-                    "decision": "REVIEW",
-                    "reasoning": "LLM enrichment failed - using fallback",
-                    "priority": "MEDIUM"
-                })
-    
-    return all_results
+                result["error"] = (
+                    "No valid LLM enrichment returned after strict response retry"
+                )
+
+    return results

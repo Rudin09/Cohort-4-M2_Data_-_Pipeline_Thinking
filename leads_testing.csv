@@ -11,7 +11,7 @@ Test_MultipleInteractions,Active Company,500,Finance,Inbound demo request,2024-0
 Test_NoSourceInfo,Source Unknown Corp,300,Retail,Unknown Source,2024-01-18
 Test_HighValueMatch,Perfect Fit Enterprise,2000,SaaS,Inbound demo request,2024-01-20
 Test_LowValueNiche,Niche Small Op,5,Agriculture,LinkedIn outreach,2024-01-15
-Test_MissingName,,400,Consulting,Sales call,2024-01-19
+Test_MissingCompany,,400,Consulting,Sales call,2024-01-19
 Test_NameOnly,James Wilson,NA,NA,NA,NA
 Test_PartialData,Tech Partial,NA,SaaS,,2024-01-20
 Test_WeekOldInteraction,Week Old Corp,250,Logistics,Webinar attendee,2024-01-13

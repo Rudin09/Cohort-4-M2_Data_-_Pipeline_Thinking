@@ -1,133 +1,95 @@
 # Lead Intelligence System
 
-Automated lead qualification system that scores leads using a custom rubric, generates personalized outreach messages, and produces an actionable report for sales teams.
+Automated lead qualification that applies a deterministic, weighted rubric to lead data, surfaces records for human review, and prepares outreach drafts for salesperson review. The system does not send emails.
 
-## Quick Start
+## Quick start (Windows PowerShell)
 
-`ash
-# Install dependencies
+From the `lead-qualifier` directory:
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Configure API key (choose one provider)
-cp .env.example .env
-# Edit .env and add your API key (GROQ_API_KEY, OPENAI_API_KEY, etc.)
+# Deterministic run; no API key or network request is needed.
+python main.py --input ..\leads_training.csv --output output_training.json --reference-date 2024-01-20 --no-llm
+```
 
-# Run on training data (30 leads)
-python main.py --input ../leads_training.csv --output output_training.json
+For the full environment setup and phase-by-phase acceptance checks, see [TESTING_GUIDE.md](../TESTING_GUIDE.md).
 
-# Run on testing data (20 edge cases)
-python main.py --input ../leads_testing.csv --output output_testing.json
+## Qualification rubric
 
-# Run on full scale (100 leads) - FINAL SUBMISSION
-python main.py --input ../leads_full_scale_100.csv --output output_report.json
-`
+Five factors are scored from 1 to 10 and combined with weights totaling 100%. The weighted sum therefore remains on a 1-10 scale.
 
-## Qualification Rubric
+| Factor | Weight | Scoring summary |
+|---|---:|---|
+| Company size fit | 25% | 50-5,000 employees: 10; 11-49: 7; 5,001-10,000: 6; 1-10: 4; otherwise: 3 |
+| Industry alignment | 25% | Core industries: 10; secondary industries: 7; tertiary industries: 5; otherwise: 3 |
+| Engagement recency | 20% | 0-30 days: 10; 31-60: 7; 61-90: 5; otherwise or missing: 3 |
+| Source quality | 15% | Inbound demo/referral: 10; sales call/webinar: 7; content/LinkedIn: 5; otherwise: 3 |
+| Budget/buying signals | 15% | Composite company-size, industry, and source conditions, as defined in `config.yaml` |
 
-The system evaluates leads across **5 weighted factors** (total = 100%):
+Decision thresholds use the unrounded weighted score; reports display one decimal place:
 
-| Factor | Weight | Description |
-|--------|--------|-------------|
-| **Company Size Fit** | 25% | Target: 50-5000 employees (SMB to Mid-market). Scores: 50-5000?10, 11-49?7, 5001-10000?6, 1-10?4, default?3 |
-| **Industry Alignment** | 25% | Core verticals: SaaS, FinTech, HealthTech, Cybersecurity, AI/ML, Software (10). Secondary: Finance, Healthcare, Logistics, Manufacturing, EdTech (7). Tertiary: Retail, Consulting, Marketing, Real Estate, Energy (5). Default: 3 |
-| **Engagement Recency** | 20% | Recent interaction indicates intent. <30 days?10, 31-60 days?7, 61-90 days?5, default?3 |
-| **Source Quality** | 15% | Inbound demo request + Referral (10), Sales call + Webinar attendee (7), Content download + LinkedIn outreach (5), default (3) |
-| **Budget/Buying Signals** | 15% | Composite: size =50 + core industry + inbound/referral (10), size =50 + finance/healthcare/software (7), size =11 (5), default (3) |
+- **QUALIFIED / HIGH:** score >= 7.5
+- **REVIEW / MEDIUM:** score >= 5.0 and < 7.5, or a required name/company is missing
+- **REJECTED / LOW:** score < 5.0
 
-**Scoring:** Each factor scored 1-10, weighted sum × 10 = final score (0-100 scale).
+The REVIEW exception for missing required fields prevents incomplete records from being treated as qualified. Optional missing data is retained, flagged for review, and scored using the rubric defaults. This rubric is business logic, not a model trained on historical conversion outcomes.
 
-**Decision Thresholds:**
-- **QUALIFIED** = 75
-- **REVIEW** = 50
-- **REJECTED** < 50
-
-**Priority:** HIGH (=75), MEDIUM (=50), LOW (<50)
-
-## Configuration
-
-All rubric settings in config.yaml:
-- Factor weights and tier definitions
-- Decision thresholds
-- LLM provider, model, batch size, timeout, temperature
-
-## Data Files
+## Data files
 
 | File | Leads | Purpose |
-|------|-------|---------|
-| leads_training.csv | 30 | Development, rubric tuning |
-| leads_testing.csv | 20 | Edge case validation (missing data, stale dates, etc.) |
-| leads_full_scale_100.csv | 100 | **Final submission run** |
+|---|---:|---|
+| `..\leads_training.csv` | 30 | Development and rubric review |
+| `..\leads_testing.csv` | 20 | Missing-data and edge-case checks |
+| `..\leads_full_scale_100.csv` | 100 | Production-size deterministic run |
+| `leads.csv` | 30 | Packaged copy of the training sample |
 
-## Output Report
+## CLI
 
-Generates output_report.json with:
-- metadata: processing timestamp, total leads, rubric version, LLM model
-- summary: counts by decision, qualified %, common rejection reasons
-- leads: detailed scoring for each lead with reasoning
-- priority_queue: leads sorted by score (descending)
-- sample_outreach_messages: 3-5 personalized message examples
-- lagged_for_review: leads with missing data but scored
-- errors: unprocessable leads
+```powershell
+python main.py --input ..\leads_testing.csv --output output_testing.json --reference-date 2024-01-20 --no-llm
+python main.py --input ..\leads_full_scale_100.csv --output output_report.json --reference-date 2024-01-20 --no-llm
+```
 
-## Test Results (Phase 7 Validation)
+`--input` is required. `--output` defaults to `output_report.json`; `--config` defaults to `config.yaml`. `--reference-date` makes recency scores reproducible. `--no-llm` runs scoring and report generation without an LLM provider or API key. The configured Groq provider is installed by `requirements.txt`; LLM enrichment also requires `GROQ_API_KEY` in `.env` and network access. `--batch-size` overrides the configured batch size.
 
-| Dataset | Leads | Qualified | Review | Rejected | Edge Cases Handled |
-|---------|-------|-----------|--------|----------|-------------------|
-| Training | 29 | 10 (34.5%) | 18 | 1 | 0 flagged |
-| Testing | 20 | 7 (35.0%) | 11 | 2 | 4 flagged, 0 errors |
-| **Full Scale** | **100** | **45 (45.0%)** | **53** | **2** | 0 flagged, 0 errors |
+## Output report
 
-## Known Limitations
+The JSON report includes processing metadata, decision summary, per-lead scores and factor breakdowns, rejection reasons, a qualified-only priority queue, review flags, and processing errors. When LLM enrichment is enabled, it adds explanation and review notes only; deterministic scores, decisions, and priorities remain authoritative. Responses are matched by stable per-run lead IDs, and failed/partial enrichment is surfaced in `errors`.
 
-1. **Recency calculation** uses current date — scores will vary over time. Use fixed reference date (--reference-date) for reproducibility.
-2. **No ground truth** — rubric is based on business logic, not historical conversion data.
-3. **LLM dependency** — requires API key and internet connectivity. Falls back to deterministic scoring if unavailable.
-4. **Industry/source normalization** — unknown values default to lowest tier.
-5. **Batch size** limited by LLM context window (default 15 leads per call).
-6. **Budget signals** use simple conditional logic — could be enhanced with ML.
-7. **LLM model availability** — Groq model availability varies; check console.groq.com for current models.
+Qualified leads receive a first-touch draft in `outreach_message`; REVIEW and REJECTED leads receive `null`. The report includes up to five varied examples in `sample_outreach_messages`. Drafts use the lead's supplied details and conditional industry wording, avoid invented customer references, and are for salesperson reviewâ€”the application never sends them.
 
-## Project Structure
+## Tests
 
-`
+From this directory, run the standard-library unit test suite:
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+The tests cover rubric scale and thresholds, input normalization, edge-case reporting, stable-ID batched LLM behavior using mocked providers, partial failures and strict-response retry, and qualified-only outreach drafts. Mocked tests do not verify live provider credentials, network availability, or model behavior; the manual acceptance guide includes the optional API smoke test and analyst review steps.
+
+## Known limitations
+
+- There is no ground truth; qualification rules are explicit business assumptions.
+- Missing optional values use rubric defaults and should be checked by a person.
+- Unrecognized industries and sources use default rubric tiers.
+- Outreach content uses configured static templates, is conditional on industry relevance, and requires salesperson review.
+- LLM explanations are optional and depend on provider availability and valid credentials. The model is not used to score or decide lead qualification.
+- Aggregate counts and source/factor summaries are directional indicators, not proof of future conversion or revenue.
+
+## Project structure
+
+```text
 lead-qualifier/
-+-- main.py                 # CLI entry point
-+-- config.yaml             # Rubric, thresholds, LLM settings
-+-- leads.csv               # Sample input (30 training leads)
-+-- output_report.json      # Generated output (from 100-lead run)
-+-- README.md               # This file
-+-- requirements.txt        # Dependencies
-+-- .env                    # API keys (not committed)
-+-- .env.example            # Template
-+-- .gitignore              # Excludes venv, .env, cache, outputs
-+-- utils/
-¦   +-- __init__.py
-¦   +-- models.py           # Lead, LeadScore, LeadResult dataclasses
-¦   +-- data_loader.py      # CSV reading, validation
-¦   +-- rubric_engine.py    # Deterministic scoring
-¦   +-- llm_client.py       # Batched LLM calls with retry
-¦   +-- message_generator.py # Personalized outreach
-¦   +-- report_builder.py   # Output report assembly
-+-- tests/
-    +-- __init__.py
-    +-- test_rubric.py
-    +-- test_data_validation.py
-    +-- test_edge_cases.py
-`
-
-## Development
-
-`ash
-# Run tests
-pytest tests/
-
-# Format code
-black utils/ main.py
-
-# Lint
-ruff check utils/ main.py
-`
-
-## License
-
-MIT
+â”œâ”€â”€ main.py
+â”œâ”€â”€ config.yaml
+â”œâ”€â”€ leads.csv
+â”œâ”€â”€ README.md
+â”œâ”€â”€ requirements.txt
+â”œâ”€â”€ .env.example
+â”œâ”€â”€ utils/
+â””â”€â”€ tests/
+```

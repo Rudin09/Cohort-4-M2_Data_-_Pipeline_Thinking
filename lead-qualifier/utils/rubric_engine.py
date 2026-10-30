@@ -73,30 +73,28 @@ def score_lead(lead: Lead, rubric: Dict[str, Any], reference_date: Optional[date
         weighted_score=budget_score * factor_configs["budget_signals"]["weight"]
     ))
     
-    # Calculate total score (0-100)
-    total_weighted = sum(fs.weighted_score for fs in factor_scores)
-    total_score = total_weighted * 10  # Scale to 0-100
-    
-    # Determine decision
-    if total_score >= thresholds["qualified"]:
-        decision = "QUALIFIED"
-    elif total_score >= thresholds["review"]:
+    # The weights sum to 1.0, so the weighted total remains on the 1-10 scale.
+    unrounded_score = sum(fs.weighted_score for fs in factor_scores)
+
+    # Required fields are necessary for a trustworthy qualification decision.
+    missing_required = not (lead.name or "").strip() or not (lead.company or "").strip()
+    if missing_required:
         decision = "REVIEW"
-    else:
-        decision = "REJECTED"
-    
-    # Determine priority
-    if total_score >= thresholds["qualified"]:
+        priority = "MEDIUM"
+    elif unrounded_score >= thresholds["qualified"]:
+        decision = "QUALIFIED"
         priority = "HIGH"
-    elif total_score >= thresholds["review"]:
+    elif unrounded_score >= thresholds["review"]:
+        decision = "REVIEW"
         priority = "MEDIUM"
     else:
+        decision = "REJECTED"
         priority = "LOW"
-    
+
     return LeadScore(
         lead=lead,
         factor_scores=factor_scores,
-        total_score=round(total_score, 1),
+        total_score=round(unrounded_score, 1),
         decision=decision,
         priority=priority
     )
