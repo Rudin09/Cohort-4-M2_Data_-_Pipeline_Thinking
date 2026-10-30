@@ -1,0 +1,1323 @@
+{
+  "metadata": {
+    "processed_at": "2026-10-30",
+    "total_leads": 29,
+    "rubric_version": "1.0",
+    "llm_model": "llama-3.1-70b-versatile",
+    "reference_date": "2024-01-20"
+  },
+  "summary": {
+    "total_processed": 29,
+    "qualified_count": 10,
+    "review_count": 18,
+    "rejected_count": 1,
+    "qualified_percentage": 34.5,
+    "common_rejection_reasons": [
+      "Low industry (3) (1)"
+    ]
+  },
+  "leads": [
+    {
+      "name": "Alice Chen",
+      "company": "CloudScale AI",
+      "company_size": 50,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-15",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Bob Rodriguez",
+      "company": "TechVentures Inc",
+      "company_size": 8,
+      "industry": "SaaS",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-20",
+      "score": 67.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Carol Singh",
+      "company": "National Bank Corp",
+      "company_size": 5000,
+      "industry": "Finance",
+      "source": "Content download",
+      "last_interaction_date": "2023-12-01",
+      "score": 71.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "David Moore",
+      "company": "StartupXYZ",
+      "company_size": 3,
+      "industry": "SaaS",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-18",
+      "score": 74.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Emma Thompson",
+      "company": "RetailWorks Solutions",
+      "company_size": 200,
+      "industry": "Retail",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-11-10",
+      "score": 70.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 5,
+          "weight": 0.2,
+          "weighted": 1.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Frank Liu",
+      "company": "Healthcare Systems Ltd",
+      "company_size": 1200,
+      "industry": "Healthcare",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-12",
+      "score": 80.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Grace Lee",
+      "company": "Manufacturing Co",
+      "company_size": 450,
+      "industry": "Manufacturing",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2023-10-05",
+      "score": 66.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Henry Park",
+      "company": "EdTech Innovations",
+      "company_size": 75,
+      "industry": "EdTech",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-14",
+      "score": 77.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Iris Patel",
+      "company": "Logistics Global",
+      "company_size": 800,
+      "industry": "Logistics",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2023-09-20",
+      "score": 63.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Jack White",
+      "company": "Digital Marketing Agency",
+      "company_size": 120,
+      "industry": "Marketing",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-19",
+      "score": 80.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Karen Miller",
+      "company": "InsurancePro",
+      "company_size": 600,
+      "industry": "Insurance",
+      "source": "Sales call",
+      "last_interaction_date": "2023-12-15",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Leon Chen",
+      "company": "FinTech Startup",
+      "company_size": 25,
+      "industry": "FinTech",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-17",
+      "score": 85.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Maya Desai",
+      "company": "Agricultural Tech",
+      "company_size": 45,
+      "industry": "Agriculture",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-16",
+      "score": 60.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Nathan Brooks",
+      "company": "Enterprise Solutions Corp",
+      "company_size": 3500,
+      "industry": "Software",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-13",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Olivia Garcia",
+      "company": "Local Restaurant Group",
+      "company_size": 12,
+      "industry": "Hospitality",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2023-08-30",
+      "score": 46.0,
+      "decision": "REJECTED",
+      "priority": "LOW",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Pamela White",
+      "company": "Pharma Research Inc",
+      "company_size": 2200,
+      "industry": "Pharmaceuticals",
+      "source": "Sales call",
+      "last_interaction_date": "2023-11-25",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Quinn Matthews",
+      "company": "Consulting Firm",
+      "company_size": 180,
+      "industry": "Consulting",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2024-01-11",
+      "score": 75.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Rachel Kim",
+      "company": "Government Agency",
+      "company_size": 800,
+      "industry": "Government",
+      "source": "Content download",
+      "last_interaction_date": "2023-12-10",
+      "score": 61.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Samuel Lee",
+      "company": "Cybersecurity Startup",
+      "company_size": 60,
+      "industry": "Cybersecurity",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-09",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Tina Patel",
+      "company": "Energy Solutions",
+      "company_size": 900,
+      "industry": "Energy",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-10-18",
+      "score": 66.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Uma Singh",
+      "company": "Event Planning Co",
+      "company_size": 35,
+      "industry": "Events",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-08",
+      "score": 60.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Victor Moore",
+      "company": "Real Estate Platform",
+      "company_size": 250,
+      "industry": "Real Estate",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-06",
+      "score": 75.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Wendy Zhang",
+      "company": "Fashion Brand",
+      "company_size": 400,
+      "industry": "Retail",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-05",
+      "score": 72.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Xavier Lopez",
+      "company": "Data Analytics Firm",
+      "company_size": 110,
+      "industry": "Analytics",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2023-12-22",
+      "score": 70.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Yuki Tanaka",
+      "company": "Travel Technology",
+      "company_size": 55,
+      "industry": "Travel",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-04",
+      "score": 75.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Zara Hassan",
+      "company": "Education Institution",
+      "company_size": 600,
+      "industry": "Education",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-12-05",
+      "score": 69.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Aaron Benj",
+      "company": "Supply Chain Co",
+      "company_size": 320,
+      "industry": "Supply Chain",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-02",
+      "score": 67.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Bella Cross",
+      "company": "Legal Services Firm",
+      "company_size": 90,
+      "industry": "Legal",
+      "source": "Sales call",
+      "last_interaction_date": "2023-11-30",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Cassandra Jones",
+      "company": "Media & Entertainment",
+      "company_size": 150,
+      "industry": "Media",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-01",
+      "score": 67.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    }
+  ],
+  "priority_queue": [
+    {
+      "name": "Alice Chen",
+      "company": "CloudScale AI",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Nathan Brooks",
+      "company": "Enterprise Solutions Corp",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Samuel Lee",
+      "company": "Cybersecurity Startup",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Leon Chen",
+      "company": "FinTech Startup",
+      "score": 85.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Frank Liu",
+      "company": "Healthcare Systems Ltd",
+      "score": 80.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Jack White",
+      "company": "Digital Marketing Agency",
+      "score": 80.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Henry Park",
+      "company": "EdTech Innovations",
+      "score": 77.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Quinn Matthews",
+      "company": "Consulting Firm",
+      "score": 75.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Victor Moore",
+      "company": "Real Estate Platform",
+      "score": 75.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Yuki Tanaka",
+      "company": "Travel Technology",
+      "score": 75.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "David Moore",
+      "company": "StartupXYZ",
+      "score": 74.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Wendy Zhang",
+      "company": "Fashion Brand",
+      "score": 72.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Carol Singh",
+      "company": "National Bank Corp",
+      "score": 71.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Xavier Lopez",
+      "company": "Data Analytics Firm",
+      "score": 70.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Emma Thompson",
+      "company": "RetailWorks Solutions",
+      "score": 70.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Zara Hassan",
+      "company": "Education Institution",
+      "score": 69.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Aaron Benj",
+      "company": "Supply Chain Co",
+      "score": 67.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Cassandra Jones",
+      "company": "Media & Entertainment",
+      "score": 67.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Bob Rodriguez",
+      "company": "TechVentures Inc",
+      "score": 67.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Grace Lee",
+      "company": "Manufacturing Co",
+      "score": 66.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Tina Patel",
+      "company": "Energy Solutions",
+      "score": 66.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Karen Miller",
+      "company": "InsurancePro",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Pamela White",
+      "company": "Pharma Research Inc",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Bella Cross",
+      "company": "Legal Services Firm",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Iris Patel",
+      "company": "Logistics Global",
+      "score": 63.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Rachel Kim",
+      "company": "Government Agency",
+      "score": 61.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Maya Desai",
+      "company": "Agricultural Tech",
+      "score": 60.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Uma Singh",
+      "company": "Event Planning Co",
+      "score": 60.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Olivia Garcia",
+      "company": "Local Restaurant Group",
+      "score": 46.0,
+      "priority": "LOW"
+    }
+  ],
+  "sample_outreach_messages": [
+    {
+      "lead": "Alice Chen",
+      "message": "[Sample] Personalized outreach for Alice Chen at CloudScale AI..."
+    },
+    {
+      "lead": "Frank Liu",
+      "message": "[Sample] Personalized outreach for Frank Liu at Healthcare Systems Ltd..."
+    },
+    {
+      "lead": "Henry Park",
+      "message": "[Sample] Personalized outreach for Henry Park at EdTech Innovations..."
+    },
+    {
+      "lead": "Jack White",
+      "message": "[Sample] Personalized outreach for Jack White at Digital Marketing Agency..."
+    },
+    {
+      "lead": "Leon Chen",
+      "message": "[Sample] Personalized outreach for Leon Chen at FinTech Startup..."
+    }
+  ],
+  "flagged_for_review": [],
+  "errors": []
+}

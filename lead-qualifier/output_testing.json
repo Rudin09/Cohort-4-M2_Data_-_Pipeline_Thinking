@@ -1,0 +1,953 @@
+{
+  "metadata": {
+    "processed_at": "2026-10-30",
+    "total_leads": 20,
+    "rubric_version": "1.0",
+    "llm_model": "llama-3.1-70b-versatile",
+    "reference_date": "2024-01-20"
+  },
+  "summary": {
+    "total_processed": 20,
+    "qualified_count": 7,
+    "review_count": 11,
+    "rejected_count": 2,
+    "qualified_percentage": 35.0,
+    "common_rejection_reasons": [
+      "Low industry (3) (1)",
+      "Low company size (3) (1)"
+    ]
+  },
+  "leads": [
+    {
+      "name": "Test_MissingSize",
+      "company": "Test Inc",
+      "company_size": null,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 72.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_VeryLargeEnterprise",
+      "company": "Global Fortune 500 Corp",
+      "company_size": 50000,
+      "industry": "Enterprise Software",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 57.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_Solo",
+      "company": "John Doe Consulting",
+      "company_size": 1,
+      "industry": "Consulting",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-20",
+      "score": 54.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_StaleInteraction",
+      "company": "Old Company Inc",
+      "company_size": 100,
+      "industry": "Manufacturing",
+      "source": "Sales call",
+      "last_interaction_date": "2022-06-15",
+      "score": 66.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_RecentEngagement",
+      "company": "Hot Lead Corp",
+      "company_size": 200,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_MissingDate",
+      "company": "Mystery Co",
+      "company_size": 150,
+      "industry": "Technology",
+      "source": "",
+      "last_interaction_date": null,
+      "score": 50.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_UnknownIndustry",
+      "company": "Mysterious Startup",
+      "company_size": 15,
+      "industry": "Unknown Sector",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-19",
+      "score": 67.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_VeryRecentSignup",
+      "company": "Brand New Startup",
+      "company_size": 2,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 74.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_MultipleInteractions",
+      "company": "Active Company",
+      "company_size": 500,
+      "industry": "Finance",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 85.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_NoSourceInfo",
+      "company": "Source Unknown Corp",
+      "company_size": 300,
+      "industry": "Retail",
+      "source": "Unknown Source",
+      "last_interaction_date": "2024-01-18",
+      "score": 69.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_HighValueMatch",
+      "company": "Perfect Fit Enterprise",
+      "company_size": 2000,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-20",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_LowValueNiche",
+      "company": "Niche Small Op",
+      "company_size": 5,
+      "industry": "Agriculture",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-15",
+      "score": 49.5,
+      "decision": "REJECTED",
+      "priority": "LOW",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_MissingName",
+      "company": "",
+      "company_size": 400,
+      "industry": "Consulting",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-19",
+      "score": 75.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_NameOnly",
+      "company": "James Wilson",
+      "company_size": null,
+      "industry": "",
+      "source": "",
+      "last_interaction_date": null,
+      "score": 30.0,
+      "decision": "REJECTED",
+      "priority": "LOW",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_PartialData",
+      "company": "Tech Partial",
+      "company_size": null,
+      "industry": "SaaS",
+      "source": "",
+      "last_interaction_date": "2024-01-20",
+      "score": 61.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_WeekOldInteraction",
+      "company": "Week Old Corp",
+      "company_size": 250,
+      "industry": "Logistics",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2024-01-13",
+      "score": 80.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_MidMarketSoft",
+      "company": "Mid Market Software",
+      "company_size": 1500,
+      "industry": "SaaS",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-18",
+      "score": 85.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_StartupShutdown",
+      "company": "Failed Startup",
+      "company_size": 8,
+      "industry": "SaaS",
+      "source": "Referral",
+      "last_interaction_date": "2023-05-01",
+      "score": 60.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      }
+    },
+    {
+      "name": "Test_GovernmentBuyer",
+      "company": "Government Tech",
+      "company_size": 3000,
+      "industry": "Government",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-17",
+      "score": 70.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    },
+    {
+      "name": "Test_SMBAverage",
+      "company": "Average SMB Co",
+      "company_size": 120,
+      "industry": "Retail",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-19",
+      "score": 80.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      }
+    }
+  ],
+  "priority_queue": [
+    {
+      "name": "Test_RecentEngagement",
+      "company": "Hot Lead Corp",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_HighValueMatch",
+      "company": "Perfect Fit Enterprise",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_MultipleInteractions",
+      "company": "Active Company",
+      "score": 85.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_MidMarketSoft",
+      "company": "Mid Market Software",
+      "score": 85.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_WeekOldInteraction",
+      "company": "Week Old Corp",
+      "score": 80.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_SMBAverage",
+      "company": "Average SMB Co",
+      "score": 80.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_MissingName",
+      "company": "",
+      "score": 75.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Test_VeryRecentSignup",
+      "company": "Brand New Startup",
+      "score": 74.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_MissingSize",
+      "company": "Test Inc",
+      "score": 72.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_GovernmentBuyer",
+      "company": "Government Tech",
+      "score": 70.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_NoSourceInfo",
+      "company": "Source Unknown Corp",
+      "score": 69.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_UnknownIndustry",
+      "company": "Mysterious Startup",
+      "score": 67.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_StaleInteraction",
+      "company": "Old Company Inc",
+      "score": 66.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_PartialData",
+      "company": "Tech Partial",
+      "score": 61.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_StartupShutdown",
+      "company": "Failed Startup",
+      "score": 60.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_VeryLargeEnterprise",
+      "company": "Global Fortune 500 Corp",
+      "score": 57.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_Solo",
+      "company": "John Doe Consulting",
+      "score": 54.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_MissingDate",
+      "company": "Mystery Co",
+      "score": 50.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Test_LowValueNiche",
+      "company": "Niche Small Op",
+      "score": 49.5,
+      "priority": "LOW"
+    },
+    {
+      "name": "Test_NameOnly",
+      "company": "James Wilson",
+      "score": 30.0,
+      "priority": "LOW"
+    }
+  ],
+  "sample_outreach_messages": [
+    {
+      "lead": "Test_RecentEngagement",
+      "message": "[Sample] Personalized outreach for Test_RecentEngagement at Hot Lead Corp..."
+    },
+    {
+      "lead": "Test_MultipleInteractions",
+      "message": "[Sample] Personalized outreach for Test_MultipleInteractions at Active Company..."
+    },
+    {
+      "lead": "Test_HighValueMatch",
+      "message": "[Sample] Personalized outreach for Test_HighValueMatch at Perfect Fit Enterprise..."
+    },
+    {
+      "lead": "Test_MissingName",
+      "message": "[Sample] Personalized outreach for Test_MissingName at ..."
+    },
+    {
+      "lead": "Test_WeekOldInteraction",
+      "message": "[Sample] Personalized outreach for Test_WeekOldInteraction at Week Old Corp..."
+    }
+  ],
+  "flagged_for_review": [
+    {
+      "name": "Test_MissingSize",
+      "company": "Test Inc",
+      "issue": "Missing company_size",
+      "score": 72.0
+    },
+    {
+      "name": "Test_MissingDate",
+      "company": "Mystery Co",
+      "issue": "Missing source; Missing last_interaction_date",
+      "score": 50.5
+    },
+    {
+      "name": "Test_NameOnly",
+      "company": "James Wilson",
+      "issue": "Missing company_size; Missing industry; Missing source; Missing last_interaction_date",
+      "score": 30.0
+    },
+    {
+      "name": "Test_PartialData",
+      "company": "Tech Partial",
+      "issue": "Missing company_size; Missing source",
+      "score": 61.5
+    }
+  ],
+  "errors": []
+}
