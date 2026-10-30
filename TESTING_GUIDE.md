@@ -334,30 +334,30 @@ print('Has factor_breakdown:', 'factor_breakdown' in lead)
 ### Test 4.1: LLM Client Import
 ```bash
 .\venv\Scripts\python.exe -c "
-from utils.llm_client import get_provider, call_llm_batch
+from utils.llm_client import get_provider, enrich_leads_with_llm, BATCH_PROMPT
 print('LLM client imports OK')
 "
 ```
 **Verify:** No import errors.
 
-### Test 4.2: Provider Factory
+### Test 4.2: Provider Factory (with API Key)
 ```bash
 .\venv\Scripts\python.exe -c "
+from dotenv import load_dotenv
+load_dotenv()
+
 import yaml
 from utils.llm_client import get_provider
 
 with open('config.yaml') as f:
     config = yaml.safe_load(f)
 
-# Test without API key (should handle gracefully)
-try:
-    provider = get_provider(config)
-    print('Provider:', type(provider).__name__)
-except Exception as e:
-    print('Expected error without API key:', type(e).__name__)
+provider = get_provider(config)
+print('Provider:', type(provider).__name__)
+print('Model:', config['llm']['model'])
 "
 ```
-**Verify:** Factory returns provider or handles missing key gracefully.
+**Verify:** Factory returns GroqProvider with correct model.
 
 ### Test 4.3: Batched Prompt Generation
 ```bash
@@ -374,7 +374,7 @@ print('Contains JSON output instruction:', 'JSON array' in prompt)
 ```
 **Verify:** Prompt template includes rubric, requests JSON output.
 
-### Test 4.4: Retry Logic (Mock)
+### Test 4.4: Retry Logic & Rate Limit Handling
 ```bash
 .\venv\Scripts\python.exe -c "
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -382,6 +382,73 @@ print('Tenacity retry decorators available')
 "
 ```
 **Verify:** Tenacity imported correctly.
+
+### Test 4.5: LLM Enrichment End-to-End (Training Data)
+```bash
+.\venv\Scripts\python.exe main.py --input ../leads_training.csv --output output_training_llm.json --reference-date 2024-01-20
+```
+**Verify:**
+- [ ] Runs without errors
+- [ ] Output file created: `output_training_llm.json`
+- [ ] All 29 leads have `llm_reasoning` field populated
+- [ ] Rate limits handled with retries (429 responses)
+
+### Test 4.6: Verify LLM Reasoning Quality
+```bash
+.\venv\Scripts\python.exe -c "
+import json
+with open('output_training_llm.json') as f:
+    r = json.load(f)
+
+print('Summary:', r['summary'])
+print()
+print('Sample LLM Reasoning:')
+for lead in r['leads'][:3]:
+    print(f\"  {lead['name']} ({lead['company']}):\")
+    print(f\"    Score: {lead['score']} | {lead['decision']} | {lead['priority']}\")
+    if 'llm_reasoning' in lead and lead['llm_reasoning']:
+        print(f\"    LLM: {lead['llm_reasoning'][:100]}...\")
+    print()
+"
+```
+**Verify:**
+- [ ] All leads have `llm_reasoning` field
+- [ ] Reasoning references specific lead details (industry, size, source)
+- [ ] Reasoning is 2-3 sentences
+- [ ] No "fallback" messages for successful calls
+
+### Test 4.7: LLM Enrichment with Rate Limit Retries
+```bash
+.\venv\Scripts\python.exe main.py --input ../leads_training.csv --output output_training_llm2.json --reference-date 2024-01-20 --verbose 2>&1 | grep -E "(429|Retrying|Groq API returned)"
+```
+**Verify:**
+- [ ] 429 rate limit responses handled
+- [ ] Retries with exponential backoff (8s, 28s, etc.)
+- [ ] Eventually succeeds with "Groq API returned X results"
+
+### Test 4.8: Fallback on LLM Failure
+```bash
+.\venv\Scripts\python.exe -c "
+from utils.llm_client import enrich_leads_with_llm
+from utils.data_loader import load_leads
+import yaml
+
+with open('config.yaml') as f:
+    config = yaml.safe_load(f)
+
+# Temporarily break config to test fallback
+config['llm']['model'] = 'invalid-model'
+leads = load_leads('../leads_training.csv')[:3]
+results = enrich_leads_with_llm(leads, config)
+
+for r in results:
+    print(f\"{r['name']}: {r.get('reasoning', 'NO REASONING')[:80]}...\")
+"
+```
+**Verify:**
+- [ ] Returns fallback reasoning ("LLM enrichment failed - using fallback")
+- [ ] Doesn't crash
+- [ ] Returns results for all leads
 
 ---
 
@@ -397,7 +464,7 @@ print('Message generator imports OK')
 ```
 **Verify:** Templates for high/medium/low priority exist.
 
-### Test 5.2: Message Generation
+### Test 5.2: Message Generation (Deterministic)
 ```bash
 .\venv\Scripts\python.exe -c "
 from utils.data_loader import load_leads
@@ -415,9 +482,148 @@ print(message[:200])
 print('...')
 print('Contains name:', lead.name in message)
 print('Contains company:', lead.company in message)
+print('Contains industry:', lead.industry in message)
 "
 ```
-**Verify:** Message personalized with lead details.
+**Verify:** Message personalized with lead details (name, company, industry, size, source).
+
+### Test 5.3: All Priority Templates
+```bash
+.\venv\Scripts\python.exe -c "
+from utils.data_loader import load_leads
+from utils.rubric_engine import load_rubric, score_leads_batch
+from utils.message_generator import generate_outreach
+from datetime import date
+
+rubric = load_rubric('config.yaml')
+leads = load_leads('../leads_training.csv')
+scores = score_leads_batch(leads, rubric, reference_date=date(2024, 1, 20))
+
+for priority in ['HIGH', 'MEDIUM', 'LOW']:
+    matching = [s for s in scores if s.priority == priority]
+    if matching:
+        lead = matching[0].lead
+        score = matching[0]
+        msg = generate_outreach(lead, score)
+        print(f'=== {priority} PRIORITY ===')
+        print(f'{lead.name} ({lead.company}):')
+        print(msg[:200])
+        print('...')
+        print()
+"
+```
+**Verify:** Each priority uses different template with appropriate tone.
+
+### Test 5.4: Industry-Specific Personalization
+```bash
+.\venv\Scripts\python.exe -c "
+from utils.data_loader import load_leads
+from utils.rubric_engine import load_rubric, score_lead
+from utils.message_generator import generate_outreach, get_industry_config
+from datetime import date
+
+rubric = load_rubric('config.yaml')
+leads = load_leads('../leads_training.csv')
+
+# Test different industries
+industries_tested = set()
+for lead in leads:
+    if lead.industry not in industries_tested:
+        industries_tested.add(lead.industry)
+        score = score_lead(lead, rubric, reference_date=date(2024, 1, 20))
+        msg = generate_outreach(lead, score)
+        cfg = get_industry_config(lead.industry)
+        print(f'{lead.industry}: pain_point="{cfg[\"pain_point\"]}" value_prop="{cfg[\"value_prop\"]}"')
+        print(f'  Message contains industry: {lead.industry in msg}')
+        print()
+"
+```
+**Verify:** Messages reference industry-specific pain points and value propositions.
+
+### Test 5.5: Report Builder Import
+```bash
+.\venv\Scripts\python.exe -c "
+from utils.report_builder import build_report, write_report, build_summary_report
+print('Report builder imports OK')
+"
+```
+**Verify:** No import errors.
+
+### Test 5.6: Full Report Structure with Messages
+```bash
+.\venv\Scripts\python.exe -c "
+import json
+from utils.data_loader import load_leads
+from utils.rubric_engine import load_rubric, score_leads_batch
+from utils.report_builder import build_report
+from datetime import date
+
+rubric = load_rubric('config.yaml')
+leads = load_leads('../leads_training.csv')
+scores = score_leads_batch(leads, rubric, reference_date=date(2024, 1, 20))
+
+# Create LeadResult objects
+from utils.models import LeadResult
+lead_results = [LeadResult(lead=ls.lead, score=ls, llm_reasoning=None, outreach_message=None, error=None) for ls in scores]
+
+metadata = {'processed_at': '2024-01-20', 'total_leads': len(leads), 'rubric_version': '1.0', 'llm_model': 'test'}
+report = build_report(lead_results, metadata)
+
+print('Report keys:', list(report.keys()))
+print('Sample messages count:', len(report['sample_outreach_messages']))
+print('Priority queue count:', len(report['priority_queue']))
+print('Flagged count:', len(report['flagged_for_review']))
+
+# Check message structure
+if report['sample_outreach_messages']:
+    msg = report['sample_outreach_messages'][0]
+    print('Sample message keys:', list(msg.keys()))
+    print('Message preview:', msg['message'][:100])
+"
+```
+**Verify:** Report includes all required fields with personalized messages.
+
+### Test 5.7: Full Pipeline with Messages (Deterministic)
+```bash
+.\venv\Scripts\python.exe main.py --input ../leads_training.csv --output output_training_phase5.json --reference-date 2024-01-20 --no-llm
+```
+**Verify:**
+- [ ] Runs without errors
+- [ ] Output file created: `output_training_phase5.json`
+- [ ] `sample_outreach_messages` contains 5 personalized messages
+- [ ] Messages reference specific lead details (name, company, industry, size, source)
+- [ ] Priority queue sorted by score descending
+
+### Test 5.8: Full Pipeline with LLM + Messages
+```bash
+.\venv\Scripts\python.exe main.py --input ../leads_training.csv --output output_training_phase5_llm.json --reference-date 2024-01-20
+```
+**Verify:**
+- [ ] Runs without errors
+- [ ] Output file created: `output_training_phase5_llm.json`
+- [ ] `sample_outreach_messages` contains personalized messages
+- [ ] `leads` array includes `llm_reasoning` field
+- [ ] All 7 required report fields present
+
+### Test 5.9: Message Quality Verification
+```bash
+.\venv\Scripts\python.exe -c "
+import json
+with open('output_training_phase5.json') as f:
+    r = json.load(f)
+
+print('Sample messages:')
+for msg in r['sample_outreach_messages']:
+    print(f\"  {msg['lead']}:\")
+    print(f\"    {msg['message'][:150]}...\")
+    print()
+"
+```
+**Verify:**
+- [ ] Messages are personalized (not generic)
+- [ ] Reference specific lead details (name, company, industry, size, source)
+- [ ] Industry-specific pain points and value propositions
+- [ ] Appropriate tone for priority level (HIGH=direct, MEDIUM=informative, LOW=resource)
 
 ---
 

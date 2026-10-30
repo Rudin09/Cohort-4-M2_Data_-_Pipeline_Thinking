@@ -1,0 +1,11 @@
+import json
+with open('output_training_llm.json') as f:
+    r = json.load(f)
+print('Summary:', r['summary'])
+print()
+print('First 3 leads with LLM reasoning:')
+for lead in r['leads'][:3]:
+    print(f"  {lead['name']} ({lead['company']}): score={lead['score']}, decision={lead['decision']}")
+    if 'llm_reasoning' in lead and lead['llm_reasoning']:
+        print(f"    LLM: {lead['llm_reasoning'][:100]}...")
+    print()

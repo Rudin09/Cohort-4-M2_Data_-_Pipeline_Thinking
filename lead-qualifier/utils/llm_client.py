@@ -64,24 +64,69 @@ class LLMProvider(ABC):
     def _parse_response(self, response_text: str, expected_count: int) -> List[Dict[str, Any]]:
         """Parse LLM response into structured data."""
         try:
-            # Try to extract JSON from response
+            # Try to extract JSON from response - handle multiple formats
+            # 1. Try direct JSON parse first
+            try:
+                results = json.loads(response_text)
+                if isinstance(results, list):
+                    return self._validate_results(results, expected_count)
+            except json.JSONDecodeError:
+                pass
+            
+            # 2. Try to find JSON array in response
             start = response_text.find('[')
             end = response_text.rfind(']') + 1
             if start >= 0 and end > start:
                 json_str = response_text[start:end]
                 results = json.loads(json_str)
-            else:
-                results = json.loads(response_text)
+                return self._validate_results(results, expected_count)
             
-            # Validate count
-            if len(results) != expected_count:
-                logger.warning(f"Expected {expected_count} results, got {len(results)}")
+            # 3. Try to find JSON object with 'results' or 'leads' key
+            import re
+            json_patterns = [
+                r'\{.*?"(?:results|leads|data)"\s*:\s*(\[.*?\])\}',
+                r'(\[.*?\])'
+            ]
+            for pattern in json_patterns:
+                matches = re.findall(pattern, response_text, re.DOTALL)
+                for match in matches:
+                    try:
+                        results = json.loads(match)
+                        if isinstance(results, list):
+                            return self._validate_results(results, expected_count)
+                    except json.JSONDecodeError:
+                        continue
             
-            return results
+            raise json.JSONDecodeError("No valid JSON array found in response", response_text, 0)
+            
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse LLM response: {e}")
-            logger.debug(f"Response text: {response_text[:500]}")
+            logger.debug(f"Response text: {response_text[:1000]}")
             raise
+    
+    def _validate_results(self, results: List[Dict[str, Any]], expected_count: int) -> List[Dict[str, Any]]:
+        """Validate and clean parsed results."""
+        if not isinstance(results, list):
+            raise ValueError("Parsed JSON is not a list")
+        
+        # Clean each result
+        cleaned = []
+        for r in results:
+            if isinstance(r, dict):
+                # Ensure required fields
+                cleaned.append({
+                    "name": r.get("name", ""),
+                    "company": r.get("company", ""),
+                    "score": r.get("score", 5),
+                    "decision": r.get("decision", "REVIEW"),
+                    "reasoning": r.get("reasoning", "No reasoning provided"),
+                    "priority": r.get("priority", "MEDIUM")
+                })
+        
+        if len(cleaned) != expected_count:
+            logger.warning(f"Expected {expected_count} results, got {len(cleaned)}")
+        
+        return cleaned
 
 
 # ============================================================

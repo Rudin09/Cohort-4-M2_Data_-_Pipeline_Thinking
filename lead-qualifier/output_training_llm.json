@@ -3,7 +3,7 @@
     "processed_at": "2026-10-30",
     "total_leads": 29,
     "rubric_version": "1.0",
-    "llm_model": "gemma2-9b-it",
+    "llm_model": "openai/gpt-oss-20b",
     "reference_date": "2024-01-20"
   },
   "summary": {
@@ -639,7 +639,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "The company is within the ideal size range and recently engaged (51 days ago), but the industry is not a preferred fit and the source was a sales call, lowering the overall score."
     },
     {
       "name": "Quinn Matthews",
@@ -678,7 +678,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent engagement (4 days ago), good company size, and a webinar source give a strong score, despite the industry not being a top priority."
     },
     {
       "name": "Rachel Kim",
@@ -717,7 +717,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Engagement was 36 days ago and the industry is not preferred; the source was content download, resulting in a moderate score."
     },
     {
       "name": "Samuel Lee",
@@ -756,7 +756,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent interaction (6 days ago), ideal company size, perfect industry fit, and a referral source combine to give the highest possible score."
     },
     {
       "name": "Tina Patel",
@@ -795,7 +795,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "The company size is ideal and the source was an inbound demo, but the engagement was 89 days ago and the industry is not a top priority, leading to a borderline score."
     },
     {
       "name": "Uma Singh",
@@ -834,7 +834,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent engagement (7 days ago) and a LinkedIn source help, but the small company size and non\u2011preferred industry keep the score moderate."
     },
     {
       "name": "Victor Moore",
@@ -873,7 +873,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Engagement was 9 days ago and the company size is good, yet the industry and source (sales call) reduce the overall score to a review level."
     },
     {
       "name": "Wendy Zhang",
@@ -912,7 +912,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent interaction (10 days ago) and good company size are offset by a non\u2011preferred industry and a content download source, resulting in a review score."
     },
     {
       "name": "Xavier Lopez",
@@ -951,7 +951,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "The lead engaged 24 days ago, has an ideal company size, and a webinar source, giving a strong score even though the industry is not a top priority."
     },
     {
       "name": "Yuki Tanaka",
@@ -990,7 +990,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent engagement (11 days ago), ideal company size, and a referral source combine to produce a high score despite the industry not being a top fit."
     },
     {
       "name": "Zara Hassan",
@@ -1029,7 +1029,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Engagement was 41 days ago and the industry is not preferred, but the company size and inbound demo source keep the score in the review range."
     },
     {
       "name": "Aaron Benj",
@@ -1068,7 +1068,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent interaction (13 days ago) and good company size help, yet the LinkedIn source and non\u2011preferred industry keep the score moderate."
     },
     {
       "name": "Bella Cross",
@@ -1107,7 +1107,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Engagement was 46 days ago and the source was a sales call, which, combined with a non\u2011preferred industry, results in a review score."
     },
     {
       "name": "Cassandra Jones",
@@ -1146,7 +1146,7 @@
           "weighted": 0.75
         }
       },
-      "llm_reasoning": "LLM enrichment failed - using fallback"
+      "llm_reasoning": "Recent engagement (14 days ago) and a good company size are offset by a non\u2011preferred industry and content download source, yielding a review score."
     }
   ],
   "priority_queue": [

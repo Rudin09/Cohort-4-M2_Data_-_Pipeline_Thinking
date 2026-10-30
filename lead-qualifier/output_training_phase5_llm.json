@@ -1,0 +1,1352 @@
+{
+  "metadata": {
+    "processed_at": "2026-10-30",
+    "total_leads": 29,
+    "rubric_version": "1.0",
+    "llm_model": "openai/gpt-oss-20b",
+    "reference_date": "2024-01-20"
+  },
+  "summary": {
+    "total_processed": 29,
+    "qualified_count": 10,
+    "review_count": 18,
+    "rejected_count": 1,
+    "qualified_percentage": 34.5,
+    "common_rejection_reasons": [
+      "Low industry (3) (1)"
+    ]
+  },
+  "leads": [
+    {
+      "name": "Alice Chen",
+      "company": "CloudScale AI",
+      "company_size": 50,
+      "industry": "SaaS",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-15",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Company size and industry match the ideal profile, and the lead came from an inbound demo request. However, the last interaction was over a year ago, reducing intent strength."
+    },
+    {
+      "name": "Bob Rodriguez",
+      "company": "TechVentures Inc",
+      "company_size": 8,
+      "industry": "SaaS",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-20",
+      "score": 67.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      },
+      "llm_reasoning": "The company is too small for our target range and the source was a low\u2011quality LinkedIn outreach. The interaction is also very old."
+    },
+    {
+      "name": "Carol Singh",
+      "company": "National Bank Corp",
+      "company_size": 5000,
+      "industry": "Finance",
+      "source": "Content download",
+      "last_interaction_date": "2023-12-01",
+      "score": 71.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Finance is outside our preferred industries and the source was a content download. The company size is acceptable but recency is poor."
+    },
+    {
+      "name": "David Moore",
+      "company": "StartupXYZ",
+      "company_size": 3,
+      "industry": "SaaS",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-18",
+      "score": 74.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 4,
+          "weight": 0.25,
+          "weighted": 1.0
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 3,
+          "weight": 0.15,
+          "weighted": 0.45
+        }
+      },
+      "llm_reasoning": "The company is too small and the source was only a referral. No recent engagement further weakens the signal."
+    },
+    {
+      "name": "Emma Thompson",
+      "company": "RetailWorks Solutions",
+      "company_size": 200,
+      "industry": "Retail",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-11-10",
+      "score": 70.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 5,
+          "weight": 0.2,
+          "weighted": 1.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Retail is not a target industry and the last interaction was over two months ago, despite a good source."
+    },
+    {
+      "name": "Frank Liu",
+      "company": "Healthcare Systems Ltd",
+      "company_size": 1200,
+      "industry": "Healthcare",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-12",
+      "score": 80.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Healthcare does not align with our HealthTech focus and the source was a sales call with no recent activity."
+    },
+    {
+      "name": "Grace Lee",
+      "company": "Manufacturing Co",
+      "company_size": 450,
+      "industry": "Manufacturing",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2023-10-05",
+      "score": 66.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Manufacturing is outside our target sectors and the source was a webinar attendee. The interaction is very old."
+    },
+    {
+      "name": "Henry Park",
+      "company": "EdTech Innovations",
+      "company_size": 75,
+      "industry": "EdTech",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-14",
+      "score": 77.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "EdTech is not a preferred industry and the source was a content download with no recent engagement."
+    },
+    {
+      "name": "Iris Patel",
+      "company": "Logistics Global",
+      "company_size": 800,
+      "industry": "Logistics",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2023-09-20",
+      "score": 63.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Logistics does not fit our industry criteria and the source was LinkedIn outreach with no recent activity."
+    },
+    {
+      "name": "Jack White",
+      "company": "Digital Marketing Agency",
+      "company_size": 120,
+      "industry": "Marketing",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-19",
+      "score": 80.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Marketing is outside our target industries and the last interaction was over a year ago, despite an inbound demo request."
+    },
+    {
+      "name": "Karen Miller",
+      "company": "InsurancePro",
+      "company_size": 600,
+      "industry": "Insurance",
+      "source": "Sales call",
+      "last_interaction_date": "2023-12-15",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Insurance is not a preferred sector and the source was a sales call with no recent engagement."
+    },
+    {
+      "name": "Leon Chen",
+      "company": "FinTech Startup",
+      "company_size": 25,
+      "industry": "FinTech",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-17",
+      "score": 85.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company is too small for our target range and the source was only a referral. No recent interaction further weakens the signal."
+    },
+    {
+      "name": "Maya Desai",
+      "company": "Agricultural Tech",
+      "company_size": 45,
+      "industry": "Agriculture",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-16",
+      "score": 60.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Agriculture is outside our focus, the company is too small, and the source was a content download with no recent activity."
+    },
+    {
+      "name": "Nathan Brooks",
+      "company": "Enterprise Solutions Corp",
+      "company_size": 3500,
+      "industry": "Software",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2024-01-13",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Software is not a preferred industry and the last interaction was over a year ago, despite an inbound demo request."
+    },
+    {
+      "name": "Olivia Garcia",
+      "company": "Local Restaurant Group",
+      "company_size": 12,
+      "industry": "Hospitality",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2023-08-30",
+      "score": 46.0,
+      "decision": "REJECTED",
+      "priority": "LOW",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Hospitality is outside our target sectors, the company is too small, and the source was LinkedIn outreach with no recent engagement."
+    },
+    {
+      "name": "Pamela White",
+      "company": "Pharma Research Inc",
+      "company_size": 2200,
+      "industry": "Pharmaceuticals",
+      "source": "Sales call",
+      "last_interaction_date": "2023-11-25",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size fits the ideal range, but the industry (Pharmaceuticals) is not aligned with our preferred verticals and the source was a sales call, which is low quality. Engagement was over 30 days ago, so intent is weak."
+    },
+    {
+      "name": "Quinn Matthews",
+      "company": "Consulting Firm",
+      "company_size": 180,
+      "industry": "Consulting",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2024-01-11",
+      "score": 75.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The firm\u2019s size is ideal and the source was a webinar attendee, giving moderate source quality. However, the consulting industry is outside our target verticals and there has been no recent engagement."
+    },
+    {
+      "name": "Rachel Kim",
+      "company": "Government Agency",
+      "company_size": 800,
+      "industry": "Government",
+      "source": "Content download",
+      "last_interaction_date": "2023-12-10",
+      "score": 61.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size is within range and the source was a content download, but the government sector is not a preferred industry and the last interaction was more than 30 days ago."
+    },
+    {
+      "name": "Samuel Lee",
+      "company": "Cybersecurity Startup",
+      "company_size": 60,
+      "industry": "Cybersecurity",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-09",
+      "score": 92.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The startup\u2019s size fits, the industry is Cybersecurity (our top vertical), and the source was a referral, which is high quality. Although engagement was not recent, the strong buying signals justify qualification."
+    },
+    {
+      "name": "Tina Patel",
+      "company": "Energy Solutions",
+      "company_size": 900,
+      "industry": "Energy",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-10-18",
+      "score": 66.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 3,
+          "weight": 0.2,
+          "weighted": 0.6
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size is ideal and the source was an inbound demo request, giving the highest source quality. However, Energy is not a preferred industry and engagement is stale."
+    },
+    {
+      "name": "Uma Singh",
+      "company": "Event Planning Co",
+      "company_size": 35,
+      "industry": "Events",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-08",
+      "score": 60.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 7,
+          "weight": 0.25,
+          "weighted": 1.75
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company is slightly below the minimum size, the industry is not aligned, the source was LinkedIn outreach (low quality), and there has been no recent engagement."
+    },
+    {
+      "name": "Victor Moore",
+      "company": "Real Estate Platform",
+      "company_size": 250,
+      "industry": "Real Estate",
+      "source": "Sales call",
+      "last_interaction_date": "2024-01-06",
+      "score": 75.5,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Despite an ideal company size, the Real Estate industry is outside our focus, the source was a sales call (low quality), and engagement is over 30 days old."
+    },
+    {
+      "name": "Wendy Zhang",
+      "company": "Fashion Brand",
+      "company_size": 400,
+      "industry": "Retail",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-05",
+      "score": 72.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 5,
+          "weight": 0.25,
+          "weighted": 1.25
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size is suitable and the source was a content download, but Retail is not a preferred industry and engagement is stale."
+    },
+    {
+      "name": "Xavier Lopez",
+      "company": "Data Analytics Firm",
+      "company_size": 110,
+      "industry": "Analytics",
+      "source": "Webinar attendee",
+      "last_interaction_date": "2023-12-22",
+      "score": 70.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The firm\u2019s size is ideal and the source was a webinar attendee, but Analytics is not a target vertical and there has been no recent engagement."
+    },
+    {
+      "name": "Yuki Tanaka",
+      "company": "Travel Technology",
+      "company_size": 55,
+      "industry": "Travel",
+      "source": "Referral",
+      "last_interaction_date": "2024-01-04",
+      "score": 75.0,
+      "decision": "QUALIFIED",
+      "priority": "HIGH",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size fits and the source was a referral, but Travel Technology is outside our preferred industries and engagement is over 30 days ago."
+    },
+    {
+      "name": "Zara Hassan",
+      "company": "Education Institution",
+      "company_size": 600,
+      "industry": "Education",
+      "source": "Inbound demo request",
+      "last_interaction_date": "2023-12-05",
+      "score": 69.0,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 10,
+          "weight": 0.15,
+          "weighted": 1.5
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The institution\u2019s size is ideal and the source was an inbound demo request, yet Education is not a target vertical and engagement is stale."
+    },
+    {
+      "name": "Aaron Benj",
+      "company": "Supply Chain Co",
+      "company_size": 320,
+      "industry": "Supply Chain",
+      "source": "LinkedIn outreach",
+      "last_interaction_date": "2024-01-02",
+      "score": 67.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size is within range and the source was LinkedIn outreach, but Supply Chain is not a preferred industry and engagement is over 30 days old."
+    },
+    {
+      "name": "Bella Cross",
+      "company": "Legal Services Firm",
+      "company_size": 90,
+      "industry": "Legal",
+      "source": "Sales call",
+      "last_interaction_date": "2023-11-30",
+      "score": 64.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 7,
+          "weight": 0.2,
+          "weighted": 1.4
+        },
+        "source_quality": {
+          "raw": 7,
+          "weight": 0.15,
+          "weighted": 1.05
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "Although the firm\u2019s size is suitable, the Legal industry is outside our focus, the source was a sales call (low quality), and engagement is stale."
+    },
+    {
+      "name": "Cassandra Jones",
+      "company": "Media & Entertainment",
+      "company_size": 150,
+      "industry": "Media",
+      "source": "Content download",
+      "last_interaction_date": "2024-01-01",
+      "score": 67.5,
+      "decision": "REVIEW",
+      "priority": "MEDIUM",
+      "factor_breakdown": {
+        "company_size": {
+          "raw": 10,
+          "weight": 0.25,
+          "weighted": 2.5
+        },
+        "industry": {
+          "raw": 3,
+          "weight": 0.25,
+          "weighted": 0.75
+        },
+        "recency": {
+          "raw": 10,
+          "weight": 0.2,
+          "weighted": 2.0
+        },
+        "source_quality": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        },
+        "budget_signals": {
+          "raw": 5,
+          "weight": 0.15,
+          "weighted": 0.75
+        }
+      },
+      "llm_reasoning": "The company size is ideal and the source was a content download, but Media is not a target vertical and engagement is over 30 days ago."
+    }
+  ],
+  "priority_queue": [
+    {
+      "name": "Alice Chen",
+      "company": "CloudScale AI",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Nathan Brooks",
+      "company": "Enterprise Solutions Corp",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Samuel Lee",
+      "company": "Cybersecurity Startup",
+      "score": 92.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Leon Chen",
+      "company": "FinTech Startup",
+      "score": 85.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Frank Liu",
+      "company": "Healthcare Systems Ltd",
+      "score": 80.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Jack White",
+      "company": "Digital Marketing Agency",
+      "score": 80.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Henry Park",
+      "company": "EdTech Innovations",
+      "score": 77.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Quinn Matthews",
+      "company": "Consulting Firm",
+      "score": 75.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Victor Moore",
+      "company": "Real Estate Platform",
+      "score": 75.5,
+      "priority": "HIGH"
+    },
+    {
+      "name": "Yuki Tanaka",
+      "company": "Travel Technology",
+      "score": 75.0,
+      "priority": "HIGH"
+    },
+    {
+      "name": "David Moore",
+      "company": "StartupXYZ",
+      "score": 74.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Wendy Zhang",
+      "company": "Fashion Brand",
+      "score": 72.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Carol Singh",
+      "company": "National Bank Corp",
+      "score": 71.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Xavier Lopez",
+      "company": "Data Analytics Firm",
+      "score": 70.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Emma Thompson",
+      "company": "RetailWorks Solutions",
+      "score": 70.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Zara Hassan",
+      "company": "Education Institution",
+      "score": 69.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Aaron Benj",
+      "company": "Supply Chain Co",
+      "score": 67.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Cassandra Jones",
+      "company": "Media & Entertainment",
+      "score": 67.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Bob Rodriguez",
+      "company": "TechVentures Inc",
+      "score": 67.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Grace Lee",
+      "company": "Manufacturing Co",
+      "score": 66.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Tina Patel",
+      "company": "Energy Solutions",
+      "score": 66.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Karen Miller",
+      "company": "InsurancePro",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Pamela White",
+      "company": "Pharma Research Inc",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Bella Cross",
+      "company": "Legal Services Firm",
+      "score": 64.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Iris Patel",
+      "company": "Logistics Global",
+      "score": 63.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Rachel Kim",
+      "company": "Government Agency",
+      "score": 61.5,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Maya Desai",
+      "company": "Agricultural Tech",
+      "score": 60.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Uma Singh",
+      "company": "Event Planning Co",
+      "score": 60.0,
+      "priority": "MEDIUM"
+    },
+    {
+      "name": "Olivia Garcia",
+      "company": "Local Restaurant Group",
+      "score": 46.0,
+      "priority": "LOW"
+    }
+  ],
+  "sample_outreach_messages": [
+    {
+      "lead": "Alice Chen",
+      "message": "Hi Alice Chen,\n\nI noticed CloudScale AI (SaaS, 50 employees employees) recently requested a demo.\nGiven your focus on scaling customer acquisition efficiently, I thought you'd find \nour automated lead qualification platform relevant.\n\nWould you be open to a brief call this week to explore how we've helped \nsimilar SaaS companies like CloudScale AI?\n\nBest regards,\n[Your Name]\n[Your Title]"
+    },
+    {
+      "lead": "Frank Liu",
+      "message": "Hi Frank Liu,\n\nI noticed Healthcare Systems Ltd (Healthcare, 1200 employees employees) recently spoke with our team.\nGiven your focus on operational efficiency and patient outcomes, I thought you'd find \nour healthcare analytics platform relevant.\n\nWould you be open to a brief call this week to explore how we've helped \nsimilar Healthcare companies like Healthcare Systems Ltd?\n\nBest regards,\n[Your Name]\n[Your Title]"
+    },
+    {
+      "lead": "Henry Park",
+      "message": "Hi Henry Park,\n\nI noticed EdTech Innovations (EdTech, 75 employees employees) recently downloaded our content.\nGiven your focus on student engagement and learning outcomes, I thought you'd find \nour adaptive learning platform relevant.\n\nWould you be open to a brief call this week to explore how we've helped \nsimilar EdTech companies like EdTech Innovations?\n\nBest regards,\n[Your Name]\n[Your Title]"
+    },
+    {
+      "lead": "Jack White",
+      "message": "Hi Jack White,\n\nI noticed Digital Marketing Agency (Marketing, 120 employees employees) recently requested a demo.\nGiven your focus on campaign attribution and ROI optimization, I thought you'd find \nour marketing analytics dashboard relevant.\n\nWould you be open to a brief call this week to explore how we've helped \nsimilar Marketing companies like Digital Marketing Agency?\n\nBest regards,\n[Your Name]\n[Your Title]"
+    },
+    {
+      "lead": "Leon Chen",
+      "message": "Hi Leon Chen,\n\nI noticed FinTech Startup (FinTech, 25 employees employees) recently was referred to us.\nGiven your focus on compliance and fraud detection, I thought you'd find \nour real-time transaction monitoring relevant.\n\nWould you be open to a brief call this week to explore how we've helped \nsimilar FinTech companies like Payment Processing Inc?\n\nBest regards,\n[Your Name]\n[Your Title]"
+    }
+  ],
+  "flagged_for_review": [],
+  "errors": []
+}

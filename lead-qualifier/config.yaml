@@ -63,7 +63,7 @@ thresholds:
 
 llm:
   provider: "groq"
-  model: "gemma2-9b-it"
+  model: "openai/gpt-oss-20b"
   batch_size: 15
   timeout: 30
   temperature: 0.3
