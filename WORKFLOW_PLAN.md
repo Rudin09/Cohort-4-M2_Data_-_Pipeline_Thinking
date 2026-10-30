@@ -21,20 +21,25 @@
 ### 1.1 Initialize Project Structure
 ```
 lead-qualifier/
-├── main.py                 # Entry point
-├── config.yaml             # Rubric, API keys, settings
-├── leads.csv               # Input data (use leads_training.csv initially)
-├── output_report.json      # Generated output
+├── main.py                 # Entry point with argparse (--input, --output)
+├── config.yaml             # Rubric, thresholds, LLM settings
+├── leads.csv               # Input data (copy/symlink from leads_training.csv)
+├── output_report.json      # Generated output (from 100-lead run)
 ├── README.md               # Documentation
 ├── requirements.txt        # Dependencies
+├── .env                    # API keys (from .env.example, not committed)
+├── .env.example            # Template for API keys
+├── .gitignore              # Excludes venv, .env, __pycache__, outputs
 ├── utils/
 │   ├── __init__.py
-│   ├── data_loader.py      # CSV reading, validation
-│   ├── rubric_engine.py    # Scoring logic
-│   ├── llm_client.py       # Batched LLM calls
-│   ├── message_generator.py # Outreach message creation
-│   └── report_builder.py   # Output formatting
+│   ├── models.py           # Lead, LeadScore, LeadResult dataclasses
+│   ├── data_loader.py      # CSV reading, validation, missing data handling
+│   ├── rubric_engine.py    # Deterministic scoring logic
+│   ├── llm_client.py       # Batched LLM calls with retry logic
+│   ├── message_generator.py # Personalized outreach templates
+│   └── report_builder.py   # Output report assembly
 └── tests/
+    ├── __init__.py
     ├── test_rubric.py
     ├── test_data_validation.py
     └── test_edge_cases.py
@@ -70,7 +75,7 @@ python-dotenv>=1.0  # Environment variables
 | **Source Quality** | 15% | Inbound demo > Referral > Webinar > Content > LinkedIn > Cold |
 | **Budget/Buying Signals** | 15% | Company size + industry + source combination |
 
-### 2.2 Scoring Logic (config.yaml)
+### 2.2 Scoring Logic (config.yaml) — **Matches Actual Implementation**
 ```yaml
 rubric:
   company_size:
@@ -100,46 +105,55 @@ rubric:
   recency:
     weight: 0.20
     tiers:
-      - days_ago: [0, 30]
+      - days: [0, 30]
         score: 10
-      - days_ago: [31, 90]
+      - days: [31, 60]
         score: 7
-      - days_ago: [91, 180]
+      - days: [61, 90]
         score: 5
-      - days_ago: [181, 365]
-        score: 3
-      - default: 1
-
-  source:
-    weight: 0.15
-    tiers:
-      - sources: [Inbound demo request]
-        score: 10
-      - sources: [Referral]
-        score: 8
-      - sources: [Sales call, Webinar attendee]
-        score: 6
-      - sources: [Content download]
-        score: 5
-      - sources: [LinkedIn outreach]
-        score: 4
       - default: 3
 
-  buying_signals:
+  source_quality:
     weight: 0.15
-    # Composite: size + industry + source alignment
-    rules:
-      - condition: "size >= 50 AND industry in core_verticals AND source == 'Inbound demo request'"
+    tiers:
+      - sources: [Inbound demo request, Referral]
         score: 10
-      - condition: "size >= 100 AND source in ['Referral', 'Sales call']"
+      - sources: [Sales call, Webinar attendee]
         score: 7
-      - default: 4
+      - sources: [Content download, LinkedIn outreach]
+        score: 5
+      - default: 3
 
-decision_thresholds:
-  qualified: 7.0
-  review: 5.0
-  rejected: 0.0
+  budget_signals:
+    weight: 0.15
+    tiers:
+      - score: 10
+        condition: "company_size >= 50 and industry in [SaaS, FinTech, HealthTech, Cybersecurity] and source in [Inbound demo request, Referral]"
+      - score: 7
+        condition: "company_size >= 50 and industry in [Finance, Healthcare, Software]"
+      - score: 5
+        condition: "company_size >= 11"
+      - default: 3
+
+thresholds:
+  qualified: 75
+  review: 50
+  rejected: 0
+
+llm:
+  provider: "groq"  # or openai, gemini, anthropic
+  model: "llama-3.1-70b-versatile"
+  batch_size: 15
+  timeout: 30
+  temperature: 0.3
 ```
+
+**Key Notes:**
+- **Scale: 0–100** (not 0–10). Each factor scored 1–10, weighted sum × 10 = final score
+- **Thresholds:** qualified ≥ 75, review ≥ 50, rejected < 50
+- **Recency:** Uses `days` (not `days_ago`), 3 tiers + default
+- **Source:** Groups Inbound+Referral (10), Sales+Webinar (7), Content+LinkedIn (5)
+- **Budget Signals:** Composite conditions evaluated in order
 
 ### 2.3 Document Rubric in README
 - Explain each factor and weight
@@ -150,15 +164,71 @@ decision_thresholds:
 
 ## Phase 3: Data Pipeline Implementation (Day 2-3)
 
+### 3.0 Data Models (utils/models.py)
+```python
+from dataclasses import dataclass
+from datetime import date
+from typing import Optional
+
+@dataclass
+class Lead:
+    name: str
+    company: str
+    company_size: Optional[int]
+    industry: str
+    source: str
+    last_interaction_date: Optional[date]
+
+@dataclass
+class FactorScore:
+    name: str
+    raw_score: int      # 1-10
+    weight: float       # 0.25, 0.20, etc.
+    weighted_score: float
+
+@dataclass
+class LeadScore:
+    lead: Lead
+    factor_scores: list[FactorScore]
+    total_score: float  # 0-100
+    decision: str       # QUALIFIED / REVIEW / REJECTED
+    priority: str       # HIGH / MEDIUM / LOW
+
+@dataclass
+class LeadResult:
+    lead: Lead
+    score: LeadScore
+    llm_reasoning: Optional[str] = None
+    outreach_message: Optional[str] = None
+    error: Optional[str] = None
+```
+
 ### 3.1 Data Loader (utils/data_loader.py)
 ```python
+import pandas as pd
+from datetime import datetime
+from typing import List
+from utils.models import Lead
+
 def load_leads(csv_path: str) -> List[Lead]:
     """Load and validate leads from CSV."""
     df = pd.read_csv(csv_path)
     # Handle missing values
-    # Normalize company_size (handle "NA", empty strings)
-    # Parse dates, handle missing/invalid dates
+    # Normalize company_size (handle "NA", empty strings) → int or None
+    # Parse dates, handle missing/invalid dates → date or None
+    # Normalize industry, source strings
     # Return list of Lead dataclasses
+
+def validate_lead(row: pd.Series) -> dict:
+    """Validate single row, return dict of issues."""
+    issues = {}
+    # name: required
+    # company: required
+    # company_size: convert to int, handle "NA"/empty → None
+    # industry: normalize case, handle unknown
+    # source: normalize, handle missing
+    # last_interaction_date: parse YYYY-MM-DD, handle missing → None
+    return issues
 ```
 
 **Validation Rules:**
@@ -171,16 +241,52 @@ def load_leads(csv_path: str) -> List[Lead]:
 
 ### 3.2 Rubric Engine (utils/rubric_engine.py)
 ```python
-def score_lead(lead: Lead, rubric: RubricConfig) -> LeadScore:
+import yaml
+from typing import List
+from utils.models import Lead, LeadScore, FactorScore
+
+def load_rubric(config_path: str) -> dict:
+    """Load rubric from config.yaml."""
+    with open(config_path) as f:
+        return yaml.safe_load(f)
+
+def score_lead(lead: Lead, rubric: dict) -> LeadScore:
     """Apply rubric to single lead, return score breakdown."""
-    # Calculate each factor score
+    # Calculate each factor score using tier matching
     # Apply weights
-    # Return total + breakdown + decision
+    # Sum weighted scores × 10 = total_score (0-100)
+    # Determine decision from thresholds
+    # Assign priority: HIGH (≥75), MEDIUM (≥50), LOW (<50)
+    # Return LeadScore with factor breakdown
 ```
 
-### 3.3 Batch Processing
+### 3.3 Main Entry Point (main.py) — **With CLI Args**
 ```python
-def process_batch(leads: List[Lead], batch_size: int = 20) -> List[LeadResult]:
+import argparse
+import logging
+from pathlib import Path
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
+def main():
+    parser = argparse.ArgumentParser(description="Lead Intelligence System")
+    parser.add_argument("--input", required=True, help="Input CSV file")
+    parser.add_argument("--output", default="output_report.json", help="Output JSON file")
+    parser.add_argument("--config", default="config.yaml", help="Rubric config file")
+    parser.add_argument("--batch-size", type=int, default=15, help="LLM batch size")
+    args = parser.parse_args()
+
+    setup_logging()
+    # Load config, leads, process, generate report
+```
+
+### 3.4 Batch Processing
+```python
+def process_batch(leads: List[Lead], batch_size: int = 15) -> List[LeadResult]:
     """Process leads in batches for LLM calls."""
     # Group leads by similarity for batched prompts
     # Call LLM once per batch
@@ -192,11 +298,35 @@ def process_batch(leads: List[Lead], batch_size: int = 20) -> List[LeadResult]:
 
 ## Phase 4: LLM Integration (Day 3-4)
 
-### 4.1 Choose LLM Provider (Free Tier)
-- **Groq** (fast, free): `llama-3.1-70b-versatile`
-- **OpenAI**: `gpt-3.5-turbo` (free tier)
-- **Gemini**: `gemini-1.5-flash` (free)
-- **Claude**: Free tier available
+### 4.1 LLM Provider Factory (utils/llm_client.py)
+```python
+from abc import ABC, abstractmethod
+from typing import List
+from utils.models import Lead
+
+class LLMProvider(ABC):
+    @abstractmethod
+    def call_batch(self, leads: List[Lead]) -> List[dict]:
+        pass
+
+class GroqProvider(LLMProvider):
+    def __init__(self, api_key: str, model: str, timeout: int):
+        # Initialize Groq client
+        pass
+    def call_batch(self, leads: List[Lead]) -> List[dict]:
+        # Groq-specific call
+        pass
+
+class OpenAIProvider(LLMProvider):
+    # Similar structure
+    pass
+
+def get_provider(config: dict) -> LLMProvider:
+    """Factory: return provider based on config.yaml 'provider' field."""
+    provider_name = config['llm']['provider']
+    # Load API key from .env (GROQ_API_KEY, OPENAI_API_KEY, etc.)
+    # Return appropriate provider instance
+```
 
 ### 4.2 Batched Prompt Design
 ```python
@@ -223,23 +353,29 @@ Output as JSON array with fields: name, company, score, decision, reasoning, pri
 
 ### 4.3 LLM Client with Retry Logic (utils/llm_client.py)
 ```python
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import logging
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((RateLimitError, TimeoutError, APIError))
+    retry=retry_if_exception_type((RateLimitError, TimeoutError, APIError, ConnectionError))
 )
-def call_llm_batch(leads_batch: List[Lead]) -> List[LLMResponse]:
+def call_llm_batch(leads_batch: List[Lead], provider: LLMProvider, config: dict) -> List[dict]:
     """Call LLM with exponential backoff retry."""
+    batch_size = config['llm']['batch_size']
+    timeout = config['llm']['timeout']
     # Handle rate limits, timeouts, API errors
     # Log failures
     # Return parsed responses
 ```
 
 ### 4.4 Error Handling
-- **Rate limits**: Exponential backoff, queue requests
-- **Timeouts**: 30s timeout, retry 3x
-- **Invalid responses**: Validate JSON, retry with stricter prompt
-- **Partial failures**: Process successful leads, flag failed for retry
+- **Rate limits**: Exponential backoff (2s, 4s, 8s), queue requests
+- **Timeouts**: 30s timeout (from config), retry 3x
+- **Invalid responses**: Validate JSON schema, retry with stricter prompt
+- **Partial failures**: Process successful leads, flag failed for retry, include in report `errors` array
+- **Logging**: All retries, failures, and fallbacks logged
 
 ---
 
@@ -261,8 +397,29 @@ similar {industry} companies like {reference_customer}?
 Best,
 [Your Name]
 """,
-    "medium_priority": "...",
-    "low_priority": "..."
+    "medium_priority": """
+Hi {name},
+
+I came across {company} and noticed your recent {source_detail}.
+As a {industry} company with {size} employees, you might be interested in 
+how we help teams like yours with {value_prop}.
+
+Happy to share a quick case study if relevant.
+
+Best,
+[Your Name]
+""",
+    "low_priority": """
+Hi {name},
+
+Thanks for your interest in {company}. I wanted to share a quick resource 
+on {topic} that might be useful for your {industry} team.
+
+Feel free to reach out if you have questions.
+
+Best,
+[Your Name]
+"""
 }
 ```
 
@@ -270,21 +427,25 @@ Best,
 ```python
 def generate_outreach(lead: Lead, score: LeadScore) -> str:
     """Generate personalized message for qualified leads."""
-    # Select template based on priority
-    # Fill in lead-specific details
-    # Reference industry, size, source, recent activity
+    # Select template based on priority (HIGH/MEDIUM/LOW)
+    # Fill in lead-specific details:
+    #   - name, company, industry, company_size
+    #   - source_detail: e.g., "requested a demo", "attended our webinar"
+    #   - industry_specific_pain_point: map industry to pain point
+    #   - reference_customer: pick from known customers in same industry
     # Return message string
 ```
 
 ### 5.3 Sample Messages for Report
 - Generate 3-5 examples for the output report
 - Show variety across industries/priorities
+- Include in `sample_outreach_messages` array in report
 
 ---
 
 ## Phase 6: Report Generation (Day 4-5)
 
-### 6.1 Output Report Structure (output_report.json)
+### 6.1 Output Report Structure (output_report.json) — **Exact Required Format**
 ```json
 {
   "metadata": {
@@ -313,7 +474,7 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
       "industry": "SaaS",
       "source": "Inbound demo request",
       "last_interaction_date": "2024-01-15",
-      "score": 8.5,
+      "score": 85.0,
       "decision": "QUALIFIED",
       "priority": "HIGH",
       "reasoning": "Strong fit: 50-person SaaS company with recent inbound demo request. Core vertical, ideal size range, high-intent signal.",
@@ -321,15 +482,15 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
     }
   ],
   "priority_queue": [
-    {"name": "Alice Chen", "company": "CloudScale AI", "score": 8.5, "priority": "HIGH"},
-    {"name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 9.2, "priority": "HIGH"}
+    {"name": "Alice Chen", "company": "CloudScale AI", "score": 85.0, "priority": "HIGH"},
+    {"name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 92.0, "priority": "HIGH"}
   ],
   "sample_outreach_messages": [
-    {"lead": "Alice Chen", "message": "..."},
+    {"lead": "Alice Chen", "message": "Hi Alice, I noticed CloudScale AI recently requested a demo..."},
     {"lead": "Test_HighValueMatch", "message": "..."}
   ],
   "flagged_for_review": [
-    {"name": "Test_MissingSize", "company": "Test Inc", "issue": "Missing company_size", "score": 5.2}
+    {"name": "Test_MissingSize", "company": "Test Inc", "issue": "Missing company_size", "score": 52.0}
   ],
   "errors": [
     {"lead": "Test_NameOnly", "error": "Missing required fields: name, company_size, industry, source, last_interaction_date"}
@@ -337,16 +498,30 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
 }
 ```
 
+**Key Format Notes:**
+- `score` is 0-100 (not 0-10)
+- `priority_queue` sorted by score descending
+- `flagged_for_review`: leads with missing data but scored anyway
+- `errors`: leads that couldn't be processed (missing required fields)
+
 ### 6.2 Report Builder (utils/report_builder.py)
 ```python
 def build_report(results: List[LeadResult], metadata: dict) -> dict:
     """Build complete output report."""
     # Calculate summary stats
-    # Sort by priority/score
-    # Generate priority queue
-    # Select sample messages
-    # Identify flagged leads
-    # Return structured report
+    # Sort leads by score descending for priority_queue
+    # Select top 3-5 sample messages
+    # Identify flagged leads (missing data but scored)
+    # Collect errors (unprocessable leads)
+    # Return structured report dict
+```
+
+### 6.3 Write Report
+```python
+import json
+def write_report(report: dict, output_path: str):
+    with open(output_path, 'w') as f:
+        json.dump(report, f, indent=2, default=str)
 ```
 
 ---
@@ -355,7 +530,8 @@ def build_report(results: List[LeadResult], metadata: dict) -> dict:
 
 ### 7.1 Test with Training Data (30 leads)
 ```bash
-python main.py --input leads_training.csv --output output_training.json
+cd lead-qualifier
+python main.py --input ../leads_training.csv --output output_training.json
 ```
 - Verify all 30 leads processed
 - Check scoring consistency
@@ -364,7 +540,7 @@ python main.py --input leads_training.csv --output output_training.json
 
 ### 7.2 Test with Edge Cases (20 leads)
 ```bash
-python main.py --input leads_testing.csv --output output_testing.json
+python main.py --input ../leads_testing.csv --output output_testing.json
 ```
 - Verify graceful handling of:
   - Missing company_size ("NA", empty)
@@ -373,17 +549,18 @@ python main.py --input leads_testing.csv --output output_testing.json
   - Extreme sizes (1, 50000)
   - Stale dates (2022)
   - Missing dates/sources
-- Check error logging
+- Check error logging in `errors` and `flagged_for_review`
 - Ensure no crashes
 
-### 7.3 Production Scale Test (100 leads)
+### 7.3 Production Scale Test (100 leads) — **Final Submission Run**
 ```bash
-python main.py --input leads_full_scale_100.csv --output output_full_scale.json
+python main.py --input ../leads_full_scale_100.csv --output output_report.json
 ```
 - Verify 100 leads processed end-to-end
 - Check batch processing efficiency
-- Validate report completeness
+- Validate report completeness (all required fields)
 - Measure runtime (< 5 minutes target)
+- **This output_report.json is submitted**
 
 ---
 
@@ -396,33 +573,34 @@ python main.py --input leads_full_scale_100.csv --output output_full_scale.json
 ## Quick Start
 ```bash
 pip install -r requirements.txt
-cp .env.example .env  # Add API key
-python main.py --input leads.csv --output report.json
+cp .env.example .env  # Add your API key
+python main.py --input leads_training.csv --output report.json
 ```
 
 ## Qualification Rubric
-[2-3 sentences explaining your rubric]
+[2-3 sentences explaining your rubric: 5 factors, weights, thresholds]
 
 ## Known Limitations
 - [List edge cases, assumptions, constraints]
 ```
 
 ### 8.2 Code Quality
-- Add type hints
+- Add type hints to all functions
 - Docstrings for all public functions
 - Consistent formatting (black/ruff)
 - Comments for complex logic
+- Logging throughout pipeline
 
 ### 8.3 Final Verification Checklist
 - [ ] Processes 100+ leads without crashes
-- [ ] Batched LLM calls (not per-lead)
-- [ ] Error handling for API failures
-- [ ] Handles missing/invalid data gracefully
-- [ ] Output report has all required fields
-- [ ] Messages are personalized (not generic)
-- [ ] README explains how to run
+- [ ] Batched LLM calls (not per-lead) — batch_size from config
+- [ ] Error handling for API failures (retries, logging)
+- [ ] Handles missing/invalid data gracefully (flagged_for_review, errors)
+- [ ] Output report has all required fields (metadata, summary, leads, priority_queue, sample_outreach_messages, flagged_for_review, errors)
+- [ ] Messages are personalized (reference industry, size, source)
+- [ ] README explains how to run with CLI args
 - [ ] Rubric documented and defensible
-- [ ] No API keys in repo
+- [ ] No API keys in repo (.env in .gitignore)
 
 ---
 
@@ -433,18 +611,33 @@ python main.py --input leads.csv --output report.json
 lead-qualifier/
 ├── main.py
 ├── config.yaml
-├── leads_training.csv (or your sample)
+├── leads_training.csv (or your sample leads.csv)
 ├── output_report.json (from 100-lead run)
 ├── README.md
 ├── requirements.txt
+├── .env.example
+├── .gitignore
 └── utils/
+    ├── __init__.py
+    ├── models.py
+    ├── data_loader.py
+    ├── rubric_engine.py
+    ├── llm_client.py
+    ├── message_generator.py
+    └── report_builder.py
 ```
 
 ### 9.2 Create Submission Zip
 ```bash
-zip -r lead-qualifier-submission.zip lead-qualifier/
-# Exclude: venv/, __pycache__/, .env, *.pyc
+cd lead-qualifier
+zip -r ../lead-qualifier-submission.zip . \
+  -x "venv/*" "__pycache__/*" ".env" "*.pyc" "*.log" ".pytest_cache/*" ".coverage" "output_*.json"
+# Verify zip contains: source, sample leads.csv, output_report.json, README.md
 ```
+
+### 9.3 Submit
+- Upload zip to submission portal
+- Ensure output_report.json is from the 100-lead run
 
 ---
 
