@@ -6,6 +6,14 @@
 
 **Business Problem:** A mid-market SaaS company processes ~1,200 inbound leads/month but only qualifies ~60 (95% loss rate). Manual qualification takes 8-12 minutes per lead. The company suspects missed opportunities and wasted effort on poor fits.
 
+### Business Workflow and Intended Outcome
+
+The business need is to help the sales team respond to promising inbound leads sooner and spend less time manually sorting every submission. The tool should take the lead information the team already collects, apply the same transparent qualification rules to every lead, and return a queue that makes the next action clear.
+
+The workflow is: **lead intake → data checks → rubric-based fit score and decision → LLM-generated explanation → prioritized sales queue and outreach draft**. Sales should be able to see why a lead was ranked highly, identify records that need human judgment, and avoid spending first-touch effort on clear poor fits. In practice, a qualified lead gets a personalized draft for salesperson review; a review lead is checked by a person before outreach; and a rejected lead is not placed in the immediate outreach queue. Summary statistics and rejection reasons should also help the business see which lead sources and fit criteria are producing stronger prospects; they are directional insights, not proof of future revenue or conversion.
+
+This mini-project delivers the qualification and first-touch step of the broader sales outreach sequence. Outreach is prepared for a person to review and send; the tool does not send emails, track replies, or schedule follow-ups. Sales owns any later follow-up timing and decisions. Leads with incomplete information or borderline scores should be surfaced for human review rather than treated as certain decisions.
+
 **Key Deliverables:**
 - Source code (Python recommended)
 - LLM API integration (batched, not per-lead)
@@ -75,7 +83,7 @@ python-dotenv>=1.0  # Environment variables
 | **Source Quality** | 15% | Inbound demo > Referral > Webinar > Content > LinkedIn > Cold |
 | **Budget/Buying Signals** | 15% | Company size + industry + source combination |
 
-### 2.2 Scoring Logic (config.yaml) — **Matches Actual Implementation**
+### 2.2 Scoring Logic (config.yaml)
 ```yaml
 rubric:
   company_size:
@@ -136,9 +144,9 @@ rubric:
       - default: 3
 
 thresholds:
-  qualified: 75
-  review: 50
-  rejected: 0
+  qualified: 7.5
+  review: 5.0
+  rejected_below: 5.0
 
 llm:
   provider: "groq"  # or openai, gemini, anthropic
@@ -149,8 +157,9 @@ llm:
 ```
 
 **Key Notes:**
-- **Scale: 0–100** (not 0–10). Each factor scored 1–10, weighted sum × 10 = final score
-- **Thresholds:** qualified ≥ 75, review ≥ 50, rejected < 50
+- **Scale: 1–10**, matching the project brief. Each factor is scored 1–10; multiply each raw factor score by its weight and sum to get the final score. Since the weights total 1.0, the result stays on a 1–10 scale.
+- **Thresholds:** qualified ≥ 7.5, review ≥ 5.0 and < 7.5, rejected < 5.0. Make the decision using the unrounded score; display one decimal place in the report.
+- **Priority:** HIGH for qualified leads, MEDIUM for review leads, LOW for rejected leads. The decision and priority must come from the deterministic rubric, not an LLM.
 - **Recency:** Uses `days` (not `days_ago`), 3 tiers + default
 - **Source:** Groups Inbound+Referral (10), Sales+Webinar (7), Content+LinkedIn (5)
 - **Budget Signals:** Composite conditions evaluated in order
@@ -190,7 +199,7 @@ class FactorScore:
 class LeadScore:
     lead: Lead
     factor_scores: list[FactorScore]
-    total_score: float  # 0-100
+    total_score: float  # 1-10 weighted average
     decision: str       # QUALIFIED / REVIEW / REJECTED
     priority: str       # HIGH / MEDIUM / LOW
 
@@ -254,9 +263,9 @@ def score_lead(lead: Lead, rubric: dict) -> LeadScore:
     """Apply rubric to single lead, return score breakdown."""
     # Calculate each factor score using tier matching
     # Apply weights
-    # Sum weighted scores × 10 = total_score (0-100)
+    # Sum weighted scores = total_score (1-10)
     # Determine decision from thresholds
-    # Assign priority: HIGH (≥75), MEDIUM (≥50), LOW (<50)
+    # Assign priority: HIGH (qualified), MEDIUM (review), LOW (rejected)
     # Return LeadScore with factor breakdown
 ```
 
@@ -287,11 +296,11 @@ def main():
 ### 3.4 Batch Processing
 ```python
 def process_batch(leads: List[Lead], batch_size: int = 15) -> List[LeadResult]:
-    """Process leads in batches for LLM calls."""
-    # Group leads by similarity for batched prompts
-    # Call LLM once per batch
-    # Parse responses
-    # Return enriched results
+    """Enrich rubric-scored leads in batches for LLM calls."""
+    # Score each lead deterministically before calling the LLM
+    # Send each batch of lead details and rubric results in one API call
+    # Parse and validate explanations, matching each response to its lead
+    # Return results without allowing LLM output to change score or decision
 ```
 
 ---
@@ -302,18 +311,18 @@ def process_batch(leads: List[Lead], batch_size: int = 15) -> List[LeadResult]:
 ```python
 from abc import ABC, abstractmethod
 from typing import List
-from utils.models import Lead
+from utils.models import LeadResult
 
 class LLMProvider(ABC):
     @abstractmethod
-    def call_batch(self, leads: List[Lead]) -> List[dict]:
+    def call_batch(self, results: List[LeadResult]) -> List[dict]:
         pass
 
 class GroqProvider(LLMProvider):
     def __init__(self, api_key: str, model: str, timeout: int):
         # Initialize Groq client
         pass
-    def call_batch(self, leads: List[Lead]) -> List[dict]:
+    def call_batch(self, results: List[LeadResult]) -> List[dict]:
         # Groq-specific call
         pass
 
@@ -332,10 +341,8 @@ def get_provider(config: dict) -> LLMProvider:
 ```python
 BATCH_PROMPT = """
 You are a B2B sales qualification expert. Analyze these {n} leads and for each provide:
-1. Qualification score (1-10) based on the rubric
-2. Decision: QUALIFIED / REVIEW / REJECTED
-3. Reasoning (2-3 sentences referencing specific lead details)
-4. Priority rank (HIGH/MEDIUM/LOW)
+1. A concise explanation (2-3 sentences) for the score and decision already calculated by the rubric, referencing specific lead details
+2. Any missing or ambiguous information a salesperson should verify
 
 Rubric:
 - Company size fit (25%): 50-5000 employees ideal
@@ -344,10 +351,12 @@ Rubric:
 - Source quality (15%): Inbound demo > Referral > Webinar > Content > LinkedIn
 - Buying signals (15%): Composite of above
 
-Leads:
+The scores, decisions, and priorities below were calculated deterministically by the application. Do not recalculate or change them. Explain the existing result; if the lead data does not support a conclusion, say what should be reviewed by a person.
+
+Leads and rubric results (each has a stable lead identifier):
 {leads_json}
 
-Output as JSON array with fields: name, company, score, decision, reasoning, priority
+Output as a JSON array with fields: lead_id, reasoning, review_note. Do not return or invent scores, decisions, or priorities.
 """
 ```
 
@@ -361,7 +370,7 @@ import logging
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception_type((RateLimitError, TimeoutError, APIError, ConnectionError))
 )
-def call_llm_batch(leads_batch: List[Lead], provider: LLMProvider, config: dict) -> List[dict]:
+def call_llm_batch(results_batch: List[LeadResult], provider: LLMProvider, config: dict) -> List[dict]:
     """Call LLM with exponential backoff retry."""
     batch_size = config['llm']['batch_size']
     timeout = config['llm']['timeout']
@@ -384,7 +393,7 @@ def call_llm_batch(leads_batch: List[Lead], provider: LLMProvider, config: dict)
 ### 5.1 Message Templates (Personalized)
 ```python
 TEMPLATES = {
-    "high_priority": """
+    "qualified_first_touch": """
 Hi {name},
 
 I noticed {company} ({industry}, {size} employees) recently {source_detail}.
@@ -396,29 +405,6 @@ similar {industry} companies like {reference_customer}?
 
 Best,
 [Your Name]
-""",
-    "medium_priority": """
-Hi {name},
-
-I came across {company} and noticed your recent {source_detail}.
-As a {industry} company with {size} employees, you might be interested in 
-how we help teams like yours with {value_prop}.
-
-Happy to share a quick case study if relevant.
-
-Best,
-[Your Name]
-""",
-    "low_priority": """
-Hi {name},
-
-Thanks for your interest in {company}. I wanted to share a quick resource 
-on {topic} that might be useful for your {industry} team.
-
-Feel free to reach out if you have questions.
-
-Best,
-[Your Name]
 """
 }
 ```
@@ -426,20 +412,24 @@ Best,
 ### 5.2 Message Generator (utils/message_generator.py)
 ```python
 def generate_outreach(lead: Lead, score: LeadScore) -> str:
-    """Generate personalized message for qualified leads."""
-    # Select template based on priority (HIGH/MEDIUM/LOW)
+    """Draft a personalized first-touch message for qualified leads."""
+    # Return no outreach draft for REVIEW or REJECTED leads
+    # Use the qualified_first_touch template for QUALIFIED leads
     # Fill in lead-specific details:
     #   - name, company, industry, company_size
     #   - source_detail: e.g., "requested a demo", "attended our webinar"
     #   - industry_specific_pain_point: map industry to pain point
     #   - reference_customer: pick from known customers in same industry
-    # Return message string
+    # Avoid inventing customer names, facts, or personal interests
+    # Return a draft for human review; do not send it
 ```
 
 ### 5.3 Sample Messages for Report
 - Generate 3-5 examples for the output report
-- Show variety across industries/priorities
+- Show variety across industries and lead sources
 - Include in `sample_outreach_messages` array in report
+- Generate drafts for qualified leads; do not send outreach automatically
+- This project covers the first-touch draft only; sales owns reply tracking and any later follow-up sequence
 
 ---
 
@@ -462,7 +452,7 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
     "qualified_percentage": 23.0,
     "common_rejection_reasons": [
       "Company size too small (32)",
-      "Stale engagement >180 days (18)",
+      "Stale engagement >90 days (18)",
       "Industry outside core verticals (15)"
     ]
   },
@@ -474,7 +464,7 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
       "industry": "SaaS",
       "source": "Inbound demo request",
       "last_interaction_date": "2024-01-15",
-      "score": 85.0,
+      "score": 10.0,
       "decision": "QUALIFIED",
       "priority": "HIGH",
       "reasoning": "Strong fit: 50-person SaaS company with recent inbound demo request. Core vertical, ideal size range, high-intent signal.",
@@ -482,15 +472,16 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
     }
   ],
   "priority_queue": [
-    {"name": "Alice Chen", "company": "CloudScale AI", "score": 85.0, "priority": "HIGH"},
-    {"name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 92.0, "priority": "HIGH"}
+    {"name": "Alice Chen", "company": "CloudScale AI", "score": 10.0, "priority": "HIGH"},
+    {"name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 9.2, "priority": "HIGH"}
   ],
   "sample_outreach_messages": [
     {"lead": "Alice Chen", "message": "Hi Alice, I noticed CloudScale AI recently requested a demo..."},
     {"lead": "Test_HighValueMatch", "message": "..."}
   ],
   "flagged_for_review": [
-    {"name": "Test_MissingSize", "company": "Test Inc", "issue": "Missing company_size", "score": 52.0}
+    {"name": "Test_MissingSize", "company": "Test Inc", "issue": "Missing company_size", "score": 5.2},
+    {"name": "Test_Borderline", "company": "Example Co", "issue": "Borderline score; human qualification review required", "score": 7.2}
   ],
   "errors": [
     {"lead": "Test_NameOnly", "error": "Missing required fields: name, company_size, industry, source, last_interaction_date"}
@@ -499,10 +490,11 @@ def generate_outreach(lead: Lead, score: LeadScore) -> str:
 ```
 
 **Key Format Notes:**
-- `score` is 0-100 (not 0-10)
-- `priority_queue` sorted by score descending
-- `flagged_for_review`: leads with missing data but scored anyway
+- `score` is 1-10, matching the project brief; show one decimal place
+- `priority_queue` contains qualified leads sorted by score descending; review leads are presented separately for human follow-up
+- `flagged_for_review`: includes all REVIEW decisions, plus other leads with missing or ambiguous data that can still be scored
 - `errors`: leads that couldn't be processed (missing required fields)
+- `decision` and `priority` are determined by the rubric engine. LLM-generated reasoning must not override them.
 
 ### 6.2 Report Builder (utils/report_builder.py)
 ```python
@@ -511,7 +503,7 @@ def build_report(results: List[LeadResult], metadata: dict) -> dict:
     # Calculate summary stats
     # Sort leads by score descending for priority_queue
     # Select top 3-5 sample messages
-    # Identify flagged leads (missing data but scored)
+    # Identify incomplete/ambiguous leads and borderline scores for human review
     # Collect errors (unprocessable leads)
     # Return structured report dict
 ```
@@ -535,7 +527,8 @@ python main.py --input ../leads_training.csv --output output_training.json
 ```
 - Verify all 30 leads processed
 - Check scoring consistency
-- Review LLM reasoning quality
+- Test the prompt on 5-10 leads first; check that explanations reference actual lead details and preserve the rubric's scores and decisions
+- Review LLM reasoning quality and confirm malformed or mismatched responses are handled
 - Adjust rubric if needed
 
 ### 7.2 Test with Edge Cases (20 leads)
@@ -550,6 +543,7 @@ python main.py --input ../leads_testing.csv --output output_testing.json
   - Stale dates (2022)
   - Missing dates/sources
 - Check error logging in `errors` and `flagged_for_review`
+- Confirm borderline scores and ambiguous records appear in `flagged_for_review`
 - Ensure no crashes
 
 ### 7.3 Production Scale Test (100 leads) — **Final Submission Run**
@@ -596,8 +590,11 @@ python main.py --input leads_training.csv --output report.json
 - [ ] Batched LLM calls (not per-lead) — batch_size from config
 - [ ] Error handling for API failures (retries, logging)
 - [ ] Handles missing/invalid data gracefully (flagged_for_review, errors)
+- [ ] Borderline or ambiguous leads are surfaced for human review
+- [ ] Scores use the 1-10 scale and thresholds consistently
+- [ ] LLM explains rubric results without changing scores, decisions, or priorities
 - [ ] Output report has all required fields (metadata, summary, leads, priority_queue, sample_outreach_messages, flagged_for_review, errors)
-- [ ] Messages are personalized (reference industry, size, source)
+- [ ] Qualified leads receive personalized first-touch message drafts (industry, size, source); sending and later follow-ups remain with sales
 - [ ] README explains how to run with CLI args
 - [ ] Rubric documented and defensible
 - [ ] No API keys in repo (.env in .gitignore)
@@ -631,7 +628,7 @@ lead-qualifier/
 ```bash
 cd lead-qualifier
 zip -r ../lead-qualifier-submission.zip . \
-  -x "venv/*" "__pycache__/*" ".env" "*.pyc" "*.log" ".pytest_cache/*" ".coverage" "output_*.json"
+  -x "venv/*" "__pycache__/*" ".env" "*.pyc" "*.log" ".pytest_cache/*" ".coverage" "output_training*.json" "output_testing*.json"
 # Verify zip contains: source, sample leads.csv, output_report.json, README.md
 ```
 
@@ -687,7 +684,7 @@ zip -r ../lead-qualifier-submission.zip . \
 1. **LLM Provider**: Choose one and stick with it (Groq recommended for speed/free tier)
 2. **Batch Size**: 10-20 leads per API call (balance context window vs. calls)
 3. **Rubric Weights**: Define before coding - hard to change later
-4. **Decision Thresholds**: Set qualified ≥ 7, review 5-7, rejected < 5
+4. **Decision Thresholds**: Use the configured 1-10 scale consistently: qualified ≥ 7.5, review ≥ 5.0 and < 7.5, rejected < 5.0
 5. **Output Format**: JSON (structured) or CSV (spreadsheet-friendly)
 
 ---
