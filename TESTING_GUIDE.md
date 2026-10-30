@@ -4,7 +4,19 @@ This guide follows the phases in [WORKFLOW_PLAN.md](./WORKFLOW_PLAN.md). Command
 
 ## Current alignment status
 
-Phase 1-3 fixes remain in place. Phase 4 now sends deterministic rubric results with stable per-run lead IDs and accepts explanation/review-note fields only; `--batch-size` overrides the config value, invalid/partial responses get a strict-prompt retry, and failures are surfaced per lead. Phase 5 produces first-touch drafts for QUALIFIED leads only, includes them in per-lead report details, and avoids fabricated reference-customer claims. Automated tests use mocked providers; live API credentials and network behavior still need an optional manual smoke test.
+Phase 1-3 fixes remain in place. Phase 4 sends deterministic rubric results with stable per-run lead IDs and accepts explanation/review-note fields only; `--batch-size` overrides the config value, invalid/partial responses get a strict-prompt retry, and failures are surfaced per lead. Phase 5 produces first-touch drafts for QUALIFIED leads only, includes them in per-lead report details, and avoids fabricated reference-customer claims. Automated provider tests use mocks. A bounded live Groq smoke test is also documented below and was verified on 2026-10-30.
+
+## Latest Phase 6-8 verification (2026-10-30)
+
+| Phase/check | Result | Observed evidence |
+|---|---|---|
+| 6 - Report generation | PASS | All seven report sections; deterministic per-lead reasoning and factor breakdown; consistent summary, qualified-only sorted queue, qualified-only varied drafts, and REVIEW/error visibility. |
+| 7 - End-to-end testing | PASS | Training/testing/full-scale deterministic runs processed 30/20/100 leads; recent full-scale deterministic runs completed in 1.68-2.33 seconds, under the 5-minute target. Missing-company edge case remains REVIEW. |
+| 8 - Documentation and polish | PASS | README sections and directional-statistics limitation verified; application function annotations and public docstrings complete; notebook JSON and acceptance cell execute. |
+| Unit tests | PASS | 23 tests passed, including mocked provider failure/retry cases and Phase 6 report-contract tests. |
+| Live Groq smoke test | PASS | Authenticated `/models` returned HTTP 200; configured model was listed; five leads were enriched in two batches with zero report errors; deterministic scores, decisions, and priorities were unchanged. |
+
+The live result is a five-lead smoke test, not a 100-lead live throughput certification. No API key or provider response body is included in logs or this guide.
 
 ## Latest Phase 1-3 verification (2026-10-30)
 
@@ -162,7 +174,7 @@ Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
 "100-lead deterministic run completed in $([math]::Round($timer.Elapsed.TotalSeconds, 2)) seconds"
 ```
 
-This deterministic run validates the CLI/report path and runtime without credentials. When provider credentials and network access are available, run the LLM-enabled full-scale submission separately and verify batching and runtime. Without credentials, record live provider behavior as unverified; mocked tests do not certify external API behavior.
+This deterministic run validates the CLI/report path and runtime without credentials. The optional live Groq smoke-test cell verifies a small authenticated batch run; it does not certify 100-lead live-provider throughput. Mocked tests alone do not certify external API behavior.
 
 ## Phase 8 - Documentation and polish
 
@@ -177,34 +189,77 @@ if (-not $readme.Contains('directional')) { throw 'README must describe aggregat
 'README sections OK'
 ```
 
-Confirm the README explains CLI arguments and limitations; review score explanations, flagged records, and example drafts as an analyst. Aggregate statistics must be described as directional—not proof of conversion or revenue. The notebook's **Phases 6-8 acceptance checks** cell provides an offline report, end-to-end CLI, and documentation verification.
+Confirm the README explains CLI arguments and limitations; review score explanations, flagged records, and example drafts as an analyst. Aggregate statistics must be described as directional—not proof of conversion or revenue. The notebook's **Phases 6-9 acceptance checks** cell provides offline report, end-to-end CLI, documentation, and submission archive verification.
 
 ## Phase 9 - Submission package
 
-Create a ZIP from `lead-qualifier` using an explicit include list so the virtual environment and `.env` cannot be included:
+From the repository root, create a package containing the app, tests, final report, analyst notebook, workflow/testing documentation, and all input datasets. Entries are written explicitly so `.env`, the virtual environment, caches, and one-off helper scripts are excluded. The ZIP layout keeps `lead-qualifier/README.md` beside the root-level `TESTING_GUIDE.md` that it links to.
 
 ```powershell
-$include = @('main.py', 'config.yaml', 'leads.csv', 'output_report.json', 'README.md', 'requirements.txt', '.env.example', '.gitignore', 'utils', 'tests')
-Compress-Archive -Path $include -DestinationPath ..\lead-qualifier-submission.zip -Force
-```
-
-Verify required entries and exclusions:
-
-```powershell
+$root = (Get-Location).Path
+$archivePath = Join-Path $root 'lead-qualifier-submission.zip'
+$buildPath = Join-Path $root 'lead-qualifier-submission.build.zip'
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path ..\lead-qualifier-submission.zip))
+if (Test-Path -LiteralPath $buildPath) {
+  Remove-Item -LiteralPath $buildPath -Force
+}
+$archive = [System.IO.Compression.ZipFile]::Open($buildPath, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
-  $entries = $archive.Entries.FullName
-  foreach ($requiredPath in @('main.py', 'config.yaml', 'leads.csv', 'output_report.json', 'README.md', 'requirements.txt')) {
-    if (-not ($entries | Where-Object { $_ -eq $requiredPath -or $_.EndsWith("/$requiredPath") })) {
-      throw "Archive missing $requiredPath"
-    }
+  $package = Join-Path $root 'lead-qualifier'
+  $packageFiles = @(
+    'main.py', 'config.yaml', 'leads.csv', 'output_report.json',
+    'README.md', 'requirements.txt', '.env.example', '.gitignore'
+  )
+  foreach ($file in $packageFiles) {
+    $source = Join-Path $package $file
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $source, "lead-qualifier/$file") | Out-Null
   }
-  if ($entries | Where-Object { $_ -match '(^|/)(\.env|venv|__pycache__)(/|$)' }) {
-    throw 'Archive contains a secret or environment/cache directory.'
+  foreach ($folder in @('utils', 'tests')) {
+    Get-ChildItem -LiteralPath (Join-Path $package $folder) -Recurse -File |
+      Where-Object { $_.FullName -notmatch '\\(__pycache__|venv)\\' -and $_.Extension -ne '.pyc' } |
+      ForEach-Object {
+        $relative = $_.FullName.Substring($package.Length + 1).Replace('\', '/')
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $_.FullName, "lead-qualifier/$relative") | Out-Null
+      }
   }
-  'Submission archive contents OK'
+  foreach ($file in @(
+    'TESTING_GUIDE.md', 'WORKFLOW_PLAN.md', 'lead_analyst_dashboard.ipynb',
+    'leads_training.csv', 'leads_testing.csv', 'leads_full_scale_100.csv'
+  )) {
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, (Join-Path $root $file), $file) | Out-Null
+  }
 } finally {
   $archive.Dispose()
 }
 ```
+
+Verify the archive contents and exclusions:
+
+```powershell
+$archive = [System.IO.Compression.ZipFile]::OpenRead($buildPath)
+try {
+  $entries = $archive.Entries.FullName
+  foreach ($requiredPath in @(
+    'lead-qualifier/main.py', 'lead-qualifier/config.yaml',
+    'lead-qualifier/leads.csv', 'lead-qualifier/output_report.json',
+    'lead-qualifier/README.md', 'lead-qualifier/requirements.txt',
+    'lead_analyst_dashboard.ipynb', 'TESTING_GUIDE.md', 'WORKFLOW_PLAN.md',
+    'leads_training.csv', 'leads_testing.csv', 'leads_full_scale_100.csv'
+  )) {
+    if ($requiredPath -notin $entries) { throw "Archive missing $requiredPath" }
+  }
+  if ($entries | Where-Object { $_ -match '(^|/)(\.env|venv|__pycache__)(/|$)|\.pyc$|(^|/)check_.*\.py$' }) {
+    throw 'Archive contains a secret, environment/cache directory, or one-off helper.'
+  }
+  $reportEntry = $archive.GetEntry('lead-qualifier/output_report.json')
+  if (-not $reportEntry) { throw 'Archive is missing the final report.' }
+  'Submission archive contents and exclusions OK'
+} finally {
+  $archive.Dispose()
+}
+Move-Item -LiteralPath $buildPath -Destination $archivePath -Force
+'Verified archive published as lead-qualifier-submission.zip'
+```
+
+The submitted `output_report.json` is the deterministic, 100-lead report (`llm_model: deterministic-only`). A separate five-lead live Groq smoke test passed; full-scale live-provider throughput was not part of this package verification.

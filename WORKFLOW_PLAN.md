@@ -585,18 +585,20 @@ python main.py --input leads_training.csv --output report.json
 - Logging throughout pipeline
 
 ### 8.3 Final Verification Checklist
-- [ ] Processes 100+ leads without crashes
-- [ ] Batched LLM calls (not per-lead) — batch_size from config
-- [ ] Error handling for API failures (retries, logging)
-- [ ] Handles missing/invalid data gracefully (flagged_for_review, errors)
-- [ ] Borderline or ambiguous leads are surfaced for human review
-- [ ] Scores use the 1-10 scale and thresholds consistently
-- [ ] LLM explains rubric results without changing scores, decisions, or priorities
-- [ ] Output report has all required fields (metadata, summary, leads, priority_queue, sample_outreach_messages, flagged_for_review, errors)
-- [ ] Qualified leads receive personalized first-touch message drafts (industry, size, source); sending and later follow-ups remain with sales
-- [ ] README explains how to run with CLI args
-- [ ] Rubric documented and defensible
-- [ ] No API keys in repo (.env in .gitignore)
+- [x] Processes 100+ leads without crashes
+- [x] Batched LLM calls (not per-lead) — batch_size from config
+- [x] Error handling for API failures (retries, logging)
+- [x] Handles missing/invalid data gracefully (flagged_for_review, errors)
+- [x] Borderline or ambiguous leads are surfaced for human review
+- [x] Scores use the 1-10 scale and thresholds consistently
+- [x] LLM explains rubric results without changing scores, decisions, or priorities
+- [x] Output report has all required fields (metadata, summary, leads, priority_queue, sample_outreach_messages, flagged_for_review, errors)
+- [x] Qualified leads receive personalized first-touch message drafts (industry, size, source); sending and later follow-ups remain with sales
+- [x] README explains how to run with CLI args
+- [x] Rubric documented and defensible
+- [x] No API keys in repo (.env in .gitignore)
+
+Verification note (2026-10-30): 23 unit tests pass; deterministic 30/20/100-lead tests pass; repeated 100-lead runs completed in 1.68-2.33 seconds. The live Groq five-lead smoke test passed with two batches and preserved deterministic decisions. Full-scale live-provider throughput has not been tested.
 
 ---
 
@@ -622,18 +624,16 @@ lead-qualifier/
     ├── message_generator.py
     └── report_builder.py
 ```
+The submission archive also carries the analyst notebook, `TESTING_GUIDE.md`, `WORKFLOW_PLAN.md`, and the training, edge-case, and 100-lead CSVs at its root so the bundled guide links and analyst checks have their required inputs.
 
 ### 9.2 Create Submission Zip
-```bash
-cd lead-qualifier
-zip -r ../lead-qualifier-submission.zip . \
-  -x "venv/*" "__pycache__/*" ".env" "*.pyc" "*.log" ".pytest_cache/*" ".coverage" "output_training*.json" "output_testing*.json"
-# Verify zip contains: source, sample leads.csv, output_report.json, README.md
-```
+Create `lead-qualifier-submission.zip` from the repository root with an explicit include list. The archive contains the application and tests under `lead-qualifier/`, plus the final report, analyst notebook, phase documentation, and training/testing/full-scale input CSVs. Exclude `.env`, `venv/`, `__pycache__/`, `*.pyc`, and temporary helper scripts. Verify the archive contains the required app/report/support files and none of the excluded paths before submission.
 
 ### 9.3 Submit
 - Upload zip to submission portal
-- Ensure output_report.json is from the 100-lead run
+- Ensure `lead-qualifier/output_report.json` is from the 100-lead run
+
+Phase 9 packaging verification (2026-10-30): a fresh deterministic 100-lead report was generated and validated; the archive was checked for required app, test, report, documentation, notebook, and dataset entries, and for absence of `.env`, virtualenvs, caches, bytecode, and one-off helper scripts. Uploading the verified ZIP to the external submission portal remains a user action.
 
 ---
 
