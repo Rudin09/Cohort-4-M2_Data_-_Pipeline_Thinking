@@ -69,14 +69,23 @@ Generates output_report.json with:
 - lagged_for_review: leads with missing data but scored
 - errors: unprocessable leads
 
+## Test Results (Phase 7 Validation)
+
+| Dataset | Leads | Qualified | Review | Rejected | Edge Cases Handled |
+|---------|-------|-----------|--------|----------|-------------------|
+| Training | 29 | 10 (34.5%) | 18 | 1 | 0 flagged |
+| Testing | 20 | 7 (35.0%) | 11 | 2 | 4 flagged, 0 errors |
+| **Full Scale** | **100** | **45 (45.0%)** | **53** | **2** | 0 flagged, 0 errors |
+
 ## Known Limitations
 
-1. **Recency calculation** uses current date — scores will vary over time. Use fixed reference date for reproducibility.
+1. **Recency calculation** uses current date — scores will vary over time. Use fixed reference date (--reference-date) for reproducibility.
 2. **No ground truth** — rubric is based on business logic, not historical conversion data.
 3. **LLM dependency** — requires API key and internet connectivity. Falls back to deterministic scoring if unavailable.
 4. **Industry/source normalization** — unknown values default to lowest tier.
 5. **Batch size** limited by LLM context window (default 15 leads per call).
 6. **Budget signals** use simple conditional logic — could be enhanced with ML.
+7. **LLM model availability** — Groq model availability varies; check console.groq.com for current models.
 
 ## Project Structure
 
@@ -85,7 +94,7 @@ lead-qualifier/
 +-- main.py                 # CLI entry point
 +-- config.yaml             # Rubric, thresholds, LLM settings
 +-- leads.csv               # Sample input (30 training leads)
-+-- output_report.json      # Generated output
++-- output_report.json      # Generated output (from 100-lead run)
 +-- README.md               # This file
 +-- requirements.txt        # Dependencies
 +-- .env                    # API keys (not committed)
