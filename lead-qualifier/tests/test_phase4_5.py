@@ -12,7 +12,11 @@ from utils.llm_client import (
     _is_retryable_provider_error,
     enrich_leads_with_llm,
 )
-from utils.message_generator import generate_outreach
+from utils.message_generator import (
+    OUTREACH_VARIANTS,
+    generate_outreach,
+    get_outreach_variant_id,
+)
 from utils.models import Lead, LeadResult
 from utils.report_builder import build_report
 from utils.rubric_engine import load_rubric, score_leads_batch
@@ -111,7 +115,9 @@ class PhaseFourTests(unittest.TestCase):
                         "score": 10,
                     },
                 ]
-            return [self.valid_result(lead_ids[2], "Third lead was explained.")]
+            return [
+                self.valid_result(lead_ids[0], "Second lead was explained.")
+            ]
 
         provider = MockProvider(response)
         with patch("utils.llm_client.get_provider", return_value=provider):
@@ -121,11 +127,11 @@ class PhaseFourTests(unittest.TestCase):
 
         self.assertEqual(provider.calls, [
             (["lead-000000", "lead-000001", "lead-000002"], False),
-            (["lead-000000", "lead-000001", "lead-000002"], True),
+            (["lead-000001", "lead-000002"], True),
         ])
         self.assertEqual(enrichments[0]["reasoning"], "First lead was explained.")
-        self.assertIsNotNone(enrichments[1]["error"])
-        self.assertEqual(enrichments[2]["reasoning"], "Third lead was explained.")
+        self.assertEqual(enrichments[1]["reasoning"], "Second lead was explained.")
+        self.assertIsNotNone(enrichments[2]["error"])
 
     def test_provider_initialization_failure_is_visible_per_lead(self):
         leads = self.make_leads()[:2]
@@ -187,8 +193,63 @@ class PhaseFourTests(unittest.TestCase):
         self.assertEqual(results[0]["reasoning"], "The supplied factors support review.")
         prompt = completions.request["messages"][0]["content"]
         self.assertIn('"deterministic_score":', prompt)
-        self.assertIn('"qualified": 7.5', prompt)
+        self.assertIn('"qualified":7.5', prompt)
+        self.assertIn('"results" array', prompt)
+        self.assertNotIn("response_format", completions.request)
         self.assertEqual(completions.request["timeout"], 10)
+
+    def test_partial_retry_keeps_valid_results_when_strict_retry_fails(self):
+        leads = self.make_leads()
+        scores = score_leads_batch(leads, self.rubric, date(2024, 1, 20))
+
+        def response(leads, scores, lead_ids, strict):
+            if strict:
+                raise TimeoutError("provider timed out")
+            return [self.valid_result(lead_ids[0], "First lead was explained.")]
+
+        provider = MockProvider(response)
+        with patch("utils.llm_client.get_provider", return_value=provider):
+            with self.assertLogs("utils.llm_client", level="INFO") as captured:
+                enrichments = enrich_leads_with_llm(
+                    leads, self.rubric, scores, batch_size=3
+                )
+
+        self.assertEqual(len(provider.calls), 4)
+        self.assertTrue(
+            all(
+                call[0] == ["lead-000001", "lead-000002"]
+                for call in provider.calls[1:]
+            )
+        )
+        self.assertEqual(enrichments[0]["reasoning"], "First lead was explained.")
+        self.assertTrue(all(item["error"] for item in enrichments[1:]))
+        diagnostics = "\n".join(captured.output)
+        self.assertIn("request_attempts=4", diagnostics)
+        self.assertIn("failure_category=partial_response+provider_TimeoutError_unrecovered", diagnostics)
+        self.assertNotIn("provider timed out", diagnostics)
+
+    def test_batch_diagnostics_report_elapsed_attempts_and_safe_finish_reason(self):
+        leads = self.make_leads()
+        scores = score_leads_batch(leads, self.rubric, date(2024, 1, 20))
+        provider = MockProvider(
+            lambda leads, scores, lead_ids, strict: [
+                self.valid_result(lead_id, "The supplied factors support review.")
+                for lead_id in lead_ids
+            ]
+        )
+        with patch("utils.llm_client.get_provider", return_value=provider):
+            with self.assertLogs("utils.llm_client", level="INFO") as captured:
+                enrichments = enrich_leads_with_llm(
+                    leads[:2], self.rubric, scores[:2], batch_size=2
+                )
+
+        self.assertEqual(len(enrichments), 2)
+        diagnostic = "\n".join(captured.output)
+        self.assertIn("elapsed_seconds=", diagnostic)
+        self.assertIn("request_attempts=1", diagnostic)
+        self.assertIn("valid_leads=2/2", diagnostic)
+        self.assertIn("finish_reason=not_reported", diagnostic)
+        self.assertIn("failure_category=none", diagnostic)
 
     def test_only_transient_provider_errors_are_retried(self):
         transient_error = type(
@@ -256,8 +317,52 @@ class PhaseFiveTests(unittest.TestCase):
         for item in report["sample_outreach_messages"]:
             self.assertIn(item["lead"], item["message"])
             self.assertIn(item["company"], item["message"])
-            self.assertNotIn("CloudScale AI", item["message"])
-            self.assertNotIn("similar", item["message"].lower())
+            self.assertIn(item["industry"], item["message"])
+            self.assertIn(item["source"], item["message"])
+            self.assertIn(item["outreach_variant"], {
+                variant_id for variant_id, _ in OUTREACH_VARIANTS
+            })
+            self.assertNotIn("budget", item["message"].lower())
+            self.assertNotIn("interest", item["message"].lower())
+
+    def test_three_distinct_variants_are_stable_and_use_supplied_facts(self):
+        lead = Lead(
+            name="Alex Example",
+            company="Example Co",
+            company_size=250,
+            industry="SaaS",
+            source="Inbound demo request",
+            last_interaction_date=date(2024, 1, 19),
+        )
+        score = score_leads_batch([lead], self.rubric, date(2024, 1, 20))[0]
+        self.assertEqual(score.decision, "QUALIFIED")
+
+        messages_by_variant = {}
+        for index in range(100):
+            lead_id = f"lead-{index:06d}"
+            variant_id = get_outreach_variant_id(lead, lead_id)
+            message = generate_outreach(lead, score, lead_id)
+            self.assertEqual(
+                get_outreach_variant_id(lead, lead_id), variant_id
+            )
+            self.assertEqual(generate_outreach(lead, score, lead_id), message)
+            self.assertIn(lead.name, message)
+            self.assertIn(lead.company, message)
+            self.assertIn(lead.industry, message)
+            self.assertIn(str(lead.company_size), message)
+            self.assertIn(lead.source, message)
+            self.assertNotIn("budget", message.lower())
+            self.assertNotIn("pain point", message.lower())
+            messages_by_variant.setdefault(variant_id, message)
+
+        self.assertEqual(
+            set(messages_by_variant),
+            {variant_id for variant_id, _ in OUTREACH_VARIANTS},
+        )
+        self.assertEqual(
+            len({message.splitlines()[2] for message in messages_by_variant.values()}),
+            len(OUTREACH_VARIANTS),
+        )
 
     def test_nonqualified_outreach_returns_no_draft(self):
         lead = Lead(

@@ -382,50 +382,34 @@ def call_llm_batch(results_batch: List[LeadResult], provider: LLMProvider, confi
 ### 4.4 Error Handling
 - **Rate limits**: Exponential backoff (2s, 4s, 8s), queue requests
 - **Timeouts**: 30s timeout (from config), retry 3x
-- **Invalid responses**: Validate JSON schema, retry with stricter prompt
-- **Partial failures**: Process successful leads, flag failed for retry, include in report `errors` array
-- **Logging**: All retries, failures, and fallbacks logged
+- **Invalid responses**: Validate compact JSON schema, retry once with stricter instructions
+- **Partial failures**: Preserve valid leads and retry only missing/invalid lead IDs once; surface remaining failures in report `errors`
+- **Logging**: Per-batch duration, request-attempt count, valid/total count, safe finish reason, and sanitized failure category; never log API keys or raw response text
 
 ---
 
 ## Phase 5: Outreach Message Generation (Day 4)
 
-### 5.1 Message Templates (Personalized)
+### 5.1 Distinct, Fact-Grounded Message Structures
 ```python
-TEMPLATES = {
-    "qualified_first_touch": """
-Hi {name},
-
-I noticed {company} ({industry}, {size} employees) recently {source_detail}.
-If {industry_specific_pain_point} is a priority for your team, our
-{product_value_prop} may be relevant.
-
-Would you be open to a brief conversation to explore whether this could be a fit?
-
-Best,
-[Your Name]
-"""
-}
+OUTREACH_VARIANTS = ("fact_first", "question_first", "direct_context")
 ```
 
 ### 5.2 Message Generator (utils/message_generator.py)
 ```python
-def generate_outreach(lead: Lead, score: LeadScore) -> str:
+def generate_outreach(lead: Lead, score: LeadScore, lead_id: str) -> Optional[str]:
     """Draft a personalized first-touch message for qualified leads."""
     # Return no outreach draft for REVIEW or REJECTED leads
-    # Use the qualified_first_touch template for QUALIFIED leads
-    # Fill in lead-specific details:
-    #   - name, company, and supplied industry/company_size details
-    #   - include a source_detail only when the source is recognized
-    #   - industry_specific_pain_point: map industry to pain point
-    #   - include a named reference only when verified, approved customer data is supplied
-    # Otherwise omit reference claims; do not invent customer names, facts, or interests
+    # Select one of three different structures deterministically from lead_id
+    # Use supplied company, industry, company_size, and source facts only
+    # Do not infer customer needs, interests, budgets, or product capabilities
     # Return a draft for human review; do not send it
 ```
 
 ### 5.3 Sample Messages for Report
 - Generate 3-5 examples for the output report
 - Show variety across industries and lead sources
+- Include the selected `outreach_variant` in each qualified lead and sample record
 - Include in `sample_outreach_messages` array in report
 - Generate drafts for qualified leads; do not send outreach automatically
 - This project covers the first-touch draft only; sales owns reply tracking and any later follow-up sequence
@@ -592,13 +576,14 @@ python main.py --input leads_training.csv --output report.json
 - [x] Borderline or ambiguous leads are surfaced for human review
 - [x] Scores use the 1-10 scale and thresholds consistently
 - [x] LLM explains rubric results without changing scores, decisions, or priorities
-- [x] Output report has all required fields (metadata, summary, leads, priority_queue, sample_outreach_messages, flagged_for_review, errors)
-- [x] Qualified leads receive personalized first-touch message drafts (industry, size, source); sending and later follow-ups remain with sales
-- [x] README explains how to run with CLI args
+- [x] Every lead has a unique report-wide `priority_rank` ordered by deterministic score (ties by lead ID); qualified queue entries retain that rank
+- [x] Output report has all required fields (metadata, summary, per-lead ranks, priority_queue, sample_outreach_messages, flagged_for_review, errors)
+- [x] Qualified leads receive one of three deterministic, fact-grounded first-touch structures (industry, size, source); sending and later follow-ups remain with sales
+- [x] README explains how to run with CLI args and fits within one rendered page
 - [x] Rubric documented and defensible
 - [x] No API keys in repo (.env in .gitignore)
 
-Verification note (2026-10-30): 23 unit tests pass; deterministic 30/20/100-lead tests pass; repeated 100-lead runs completed in 1.68-2.33 seconds. The live Groq five-lead smoke test passed with two batches and preserved deterministic decisions. Full-scale live-provider throughput has not been tested.
+Verification update (2026-10-31): 27 unit tests pass; the 30/20/100 deterministic runs and notebook acceptance checks pass. The README renders to one Letter page. A prior 100-lead live attempt produced 85/100 explanations in 428.9s. The configured Groq model rejected `response_format={"type":"json_object"}` with HTTP 400, while a compact prompt-only JSON pilot passed. On the same ten leads, batch sizes 5/10/15 all achieved 10/10; size 5 was fastest (6.7s) with no retries and is the default. The new full live run produced 100/100 explanations, zero errors, and 20 batches with one request each and `finish_reason=stop`; deterministic scores/decisions/priorities matched exactly. Runtime was 299.8s, just under five minutes. The verified live report was promoted only after those checks. Outreach has three deterministic, fact-only structures selected by lead ID.
 
 ---
 
@@ -633,7 +618,7 @@ Create `lead-qualifier-submission.zip` from the repository root with an explicit
 - Upload zip to submission portal
 - Ensure `lead-qualifier/output_report.json` is from the 100-lead run
 
-Phase 9 packaging verification (2026-10-30): a fresh deterministic 100-lead report was generated and validated; the archive was checked for required app, test, report, documentation, notebook, and dataset entries, and for absence of `.env`, virtualenvs, caches, bytecode, and one-off helper scripts. Uploading the verified ZIP to the external submission portal remains a user action.
+Phase 9 packaging verification (2026-10-31): the validated live 100-lead report contains reasoning for every lead, zero errors, unique ranks 1-100, and scores/decisions/priorities equal to deterministic baseline. The refreshed ZIP includes the final outreach variants, LLM diagnostics/retries, tests, README, notebook, guides, config, and live report. CRC, required-file/exclusion checks, extracted-package tests, and an extracted 100-lead deterministic CLI run pass; the archive report matches the workspace report. Uploading the verified ZIP to the external submission portal remains a user action.
 
 ---
 

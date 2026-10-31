@@ -4,19 +4,22 @@ This guide follows the phases in [WORKFLOW_PLAN.md](./WORKFLOW_PLAN.md). Command
 
 ## Current alignment status
 
-Phase 1-3 fixes remain in place. Phase 4 sends deterministic rubric results with stable per-run lead IDs and accepts explanation/review-note fields only; `--batch-size` overrides the config value, invalid/partial responses get a strict-prompt retry, and failures are surfaced per lead. Phase 5 produces first-touch drafts for QUALIFIED leads only, includes them in per-lead report details, and avoids fabricated reference-customer claims. Automated provider tests use mocks. A bounded live Groq smoke test is also documented below and was verified on 2026-10-30.
+Phase 1-3 fixes remain in place. Phase 4 sends deterministic rubric results with stable per-run lead IDs and accepts explanation/review-note fields only; malformed output is retried once, and partial retries contain only missing leads while retaining prior successes. Per-batch diagnostics report duration, request attempts, validated count, finish reason, and a safe failure category; no prompt/response bodies or credentials are logged. The configured model returned HTTP 400 for `response_format={"type":"json_object"}` in a minimal pilot, so the client uses a compact JSON-only prompt and validates responses. Phase 5 provides three reproducible, fact-only outreach structures for QUALIFIED leads; the chosen variant is recorded per lead. Every lead has a unique report-wide `priority_rank`, retained by qualified queue entries. Automated provider tests use mocks.
 
-## Latest Phase 6-8 verification (2026-10-30)
+## Latest Phase 6-8 verification (2026-10-31)
 
 | Phase/check | Result | Observed evidence |
 |---|---|---|
-| 6 - Report generation | PASS | All seven report sections; deterministic per-lead reasoning and factor breakdown; consistent summary, qualified-only sorted queue, qualified-only varied drafts, and REVIEW/error visibility. |
-| 7 - End-to-end testing | PASS | Training/testing/full-scale deterministic runs processed 30/20/100 leads; recent full-scale deterministic runs completed in 1.68-2.33 seconds, under the 5-minute target. Missing-company edge case remains REVIEW. |
-| 8 - Documentation and polish | PASS | README sections and directional-statistics limitation verified; application function annotations and public docstrings complete; notebook JSON and acceptance cell execute. |
-| Unit tests | PASS | 23 tests passed, including mocked provider failure/retry cases and Phase 6 report-contract tests. |
+| 6 - Report generation | PASS | All seven report sections; unique sequential report-wide ranks, deterministic per-lead reasoning, qualified-only queue with preserved ranks, and REVIEW/error visibility. |
+| 7 - End-to-end testing | PASS | Training/testing/full-scale deterministic runs process 30/20/100 leads; the regenerated 100-lead report has ranks 1-100 and the queue preserves those ranks. |
+| 8 - Documentation and polish | PASS | README renders to one Letter page at 10pt Arial with 0.55-inch margins; notebook JSON and updated acceptance checks validate report ranks. |
+| Unit tests | PASS | 27 tests passed, including all three outreach variants, safe batch diagnostics, bounded missing-only retries, unique rank/tie-break behavior, and report-contract tests. |
 | Live Groq smoke test | PASS | Authenticated `/models` returned HTTP 200; configured model was listed; five leads were enriched in two batches with zero report errors; deterministic scores, decisions, and priorities were unchanged. |
+| Live Groq 100-lead attempt (previous prompt/batch settings) | PARTIAL | 85/100 leads received LLM reasoning; 15 failed response validation. Seven batches took 428.9 seconds; deterministic decisions were preserved. |
+| Fixed-input tuning pilot | PASS | Ten identical leads were tested at batch sizes 5/10/15. All had 10/10 reasoning and preserved deterministic outputs; batch 5 took 6.7 seconds with zero retries/errors, while 10/15 each needed strict-response retry. Default set to 5. |
+| Live Groq 100-lead retest | PASS | All 100 leads received reasoning with zero errors; 20 batches, one request each, `finish_reason=stop`, no validation retries. Runtime 299.8 seconds; deterministic score/decision/priority matched the baseline. |
 
-The live result is a five-lead smoke test, not a 100-lead live throughput certification. No API key or provider response body is included in logs or this guide.
+The first 100-lead attempt was PARTIAL; the retest passed the full acceptance gate and is now the submitted report. Runtime is 299.8 seconds, just under the five-minute limit, so allow for provider/network variability when rerunning. The live report was generated to a temporary path and promoted only after confirming complete reasoning, zero errors, and deterministic score/decision/priority equality. No API key or provider response body is included in logs or this guide.
 
 ## Latest Phase 1-3 verification (2026-10-30)
 
@@ -133,29 +136,31 @@ Inspect the logs to confirm four batched requests (3, 3, 3, and 1 leads) and ver
 .\venv\Scripts\python.exe -c "import json; r=json.load(open('output_llm_smoke.json', encoding='utf-8')); assert len(r['leads'])==10; assert all(x['score'] is not None and x['decision'] in {'QUALIFIED','REVIEW','REJECTED'} for x in r['leads']); assert all('llm_reasoning' not in x or isinstance(x['llm_reasoning'],str) for x in r['leads']); print('LLM enrichment report shape OK; errors:', len(r['errors']))"
 ```
 
-Pass when deterministic score/decision/priority values remain authoritative, enrichments match the right leads despite duplicate names, and any malformed/partial response or API failure is retried where applicable and surfaced in `errors`. Never expose API keys in output or logs. Remove the two temporary smoke-test files after review. Mocked tests do not count as a live-provider pass.
+Pass when deterministic score/decision/priority values remain authoritative, enrichments match the right leads despite duplicate names, malformed output gets one strict retry, partial output retries only missing leads, and any unresolved failure is surfaced in `errors`. Logs must include per-batch elapsed seconds, API request attempts, valid/total leads, safe finish reason, and a sanitized failure category—not API keys or raw provider text. Remove temporary smoke-test files after review. Mocked tests do not count as a live-provider pass.
+
+To compare prompt-only JSON response quality at several batch sizes, use the same fixed input subset and test `--batch-size 5`, `10`, and `15`. Record elapsed time, `llm_reasoning` coverage, error count, batch diagnostics, and unchanged score/decision/priority against a deterministic baseline. In the 10-lead pilot, batch 5 was fastest with no recovery retries and was selected as the default. Do not select a setting based only on fewer API calls; use valid response coverage and throughput. The tested JSON-mode `response_format` option returned HTTP 400 for the configured model and is not enabled.
 
 For a bounded live-provider check, run the notebook's **Optional live Groq/API smoke test** cell after setting a newly rotated `GROQ_API_KEY` in `lead-qualifier/.env`. It checks authenticated access to `/models`, confirms the configured model is available, then runs the real CLI on five training leads in two batches and compares the deterministic scores/decisions with an offline baseline. The cell suppresses API response bodies and never prints the key. A key pasted into a chat or notebook should be revoked before testing; never place credentials in notebook source.
 
 ## Phase 5 - Outreach drafts
 
-Inspect the generated messages in the report:
+Inspect the generated messages in the report. `outreach_variant` identifies one of three materially different structures (`fact_first`, `question_first`, or `direct_context`); selection is deterministic for the stable per-run lead ID.
 
 ```powershell
 .\venv\Scripts\python.exe -c "import json; r=json.load(open('output_training.json', encoding='utf-8')); assert all((x['outreach_message'] is not None)==(x['decision']=='QUALIFIED') for x in r['leads']); qualified={x['name'] for x in r['leads'] if x['decision']=='QUALIFIED'}; messages=r['sample_outreach_messages']; assert all(x['lead'] in qualified for x in messages); assert len(messages)<=5; assert r['summary']['qualified_count']<3 or len(messages)>=3; print('Sample drafts:', len(messages)); [print(x['lead'], x['message'][:160]) for x in messages]"
 ```
 
-Pass when only qualified leads receive drafts, sample examples vary across industry/source when the data permits, and messages do not invent customer references, lead interests, or other facts. Drafts are for salesperson review—not automatic sending. REVIEW leads need human judgment; rejected leads must not enter the immediate outreach queue.
+Pass when each qualified lead receives one of the three variants, REVIEW/REJECTED leads have no draft or variant, and the report samples name the same variant as their lead record. Messages should cite the supplied company and available industry, size, and source facts; they must not invent needs, budgets, or customer references. Drafts are for salesperson review—not automatic sending.
 
 ## Phase 6 - Report generation
 
 Validate the required report sections and key constraints:
 
 ```powershell
-.\venv\Scripts\python.exe -c "import json; r=json.load(open('output_training.json', encoding='utf-8')); required={'metadata','summary','leads','priority_queue','sample_outreach_messages','flagged_for_review','errors'}; assert required <= r.keys(), required-r.keys(); s=r['summary']; assert s['total_processed']==len(r['leads'])==30; assert s['qualified_count']+s['review_count']+s['rejected_count']==30; assert all({'lead_id','name','company','score','decision','priority','reasoning','factor_breakdown','outreach_message'} <= x.keys() for x in r['leads']); assert all(1 <= x['score'] <= 10 and x['reasoning'] for x in r['leads']); q=r['priority_queue']; assert all(x['priority']=='HIGH' for x in q); assert [x['score'] for x in q]==sorted((x['score'] for x in q), reverse=True); qids={x['lead_id'] for x in q}; assert qids=={x['lead_id'] for x in r['leads'] if x['decision']=='QUALIFIED'}; fids={x['lead_id'] for x in r['flagged_for_review']}; assert {x['lead_id'] for x in r['leads'] if x['decision']=='REVIEW'} <= fids; assert all((x['outreach_message'] is not None)==(x['decision']=='QUALIFIED') for x in r['leads']); assert len(r['sample_outreach_messages'])<=5; assert s['qualified_count']<3 or len(r['sample_outreach_messages'])>=3; assert isinstance(r['errors'],list); print('Phase 6 report contract OK')"
+.\venv\Scripts\python.exe -c "import json; r=json.load(open('output_training.json', encoding='utf-8')); required={'metadata','summary','leads','priority_queue','sample_outreach_messages','flagged_for_review','errors'}; assert required <= r.keys(), required-r.keys(); s=r['summary']; assert s['total_processed']==len(r['leads'])==30; assert s['qualified_count']+s['review_count']+s['rejected_count']==30; assert all({'lead_id','name','company','score','decision','priority','priority_rank','reasoning','factor_breakdown','outreach_message'} <= x.keys() for x in r['leads']); variants={'fact_first','question_first','direct_context'}; assert all((x.get('outreach_variant') in variants)==(x['decision']=='QUALIFIED') for x in r['leads']); assert all(1 <= x['score'] <= 10 and x['reasoning'] for x in r['leads']); ranks={x['lead_id']:x['priority_rank'] for x in r['leads']}; assert sorted(ranks.values())==list(range(1,31)); q=r['priority_queue']; assert all(x['priority']=='HIGH' and x['priority_rank']==ranks[x['lead_id']] for x in q); assert [x['score'] for x in q]==sorted((x['score'] for x in q), reverse=True); assert [x['priority_rank'] for x in q]==sorted(x['priority_rank'] for x in q); qids={x['lead_id'] for x in q}; assert qids=={x['lead_id'] for x in r['leads'] if x['decision']=='QUALIFIED'}; fids={x['lead_id'] for x in r['flagged_for_review']}; assert {x['lead_id'] for x in r['leads'] if x['decision']=='REVIEW'} <= fids; assert all((x['outreach_message'] is not None)==(x['decision']=='QUALIFIED') for x in r['leads']); assert len(r['sample_outreach_messages'])<=5; assert all(x['outreach_variant']==next(row['outreach_variant'] for row in r['leads'] if row['lead_id']==x['lead_id']) for x in r['sample_outreach_messages']); assert s['qualified_count']<3 or len(r['sample_outreach_messages'])>=3; assert isinstance(r['errors'],list); print('Phase 6 report contract OK')"
 ```
 
-Pass when the report includes per-lead deterministic reasoning, score, decision, priority, and factor breakdown; consistent summary counts and qualified percentage; common rejection reasons; a score-descending queue of qualified leads; 3-5 varied sample drafts when at least three leads qualify; every REVIEW or failed-enrichment record in `flagged_for_review`; and all processing failures in `errors`.
+Pass when every lead has a unique sequential report-wide rank ordered by deterministic score (ties by lead ID), qualified queue entries retain the same ranks, and the report includes per-lead deterministic reasoning, score, decision, priority, and factor breakdown; consistent summary counts and qualified percentage; common rejection reasons; a qualified-only priority queue; 3-5 varied sample drafts when at least three leads qualify; every REVIEW or failed-enrichment record in `flagged_for_review`; and all processing failures in `errors`.
 
 ## Phase 7 - End-to-end testing
 
@@ -167,14 +172,14 @@ $timer = [Diagnostics.Stopwatch]::StartNew()
 .\venv\Scripts\python.exe main.py --input ..\leads_full_scale_100.csv --output $reportPath --reference-date 2024-01-20 --no-llm
 if ($LASTEXITCODE -ne 0) { throw '100-lead CLI run failed.' }
 $timer.Stop()
-.\venv\Scripts\python.exe -c "import json,sys; r=json.load(open(sys.argv[1], encoding='utf-8')); assert r['summary']['total_processed']==100; assert len(r['leads'])==100; assert len({x['lead_id'] for x in r['leads']})==100; assert all('reasoning' in x and 1 <= x['score'] <= 10 for x in r['leads']); print(r['summary'])" $reportPath
+.\venv\Scripts\python.exe -c "import json,sys; r=json.load(open(sys.argv[1], encoding='utf-8')); assert r['summary']['total_processed']==100; assert len(r['leads'])==100; assert len({x['lead_id'] for x in r['leads']})==100; assert sorted(x['priority_rank'] for x in r['leads'])==list(range(1,101)); ranks={x['lead_id']:x['priority_rank'] for x in r['leads']}; q=r['priority_queue']; assert all(x['priority_rank']==ranks[x['lead_id']] for x in q); assert [x['priority_rank'] for x in q]==sorted(x['priority_rank'] for x in q); assert all('reasoning' in x and 1 <= x['score'] <= 10 for x in r['leads']); print(r['summary'])" $reportPath
 if ($LASTEXITCODE -ne 0) { throw '100-lead report validation failed.' }
 if ($timer.Elapsed.TotalSeconds -ge 300) { throw "Runtime target exceeded: $($timer.Elapsed.TotalSeconds) seconds" }
 Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
 "100-lead deterministic run completed in $([math]::Round($timer.Elapsed.TotalSeconds, 2)) seconds"
 ```
 
-This deterministic run validates the CLI/report path and runtime without credentials. The optional live Groq smoke-test cell verifies a small authenticated batch run; it does not certify 100-lead live-provider throughput. Mocked tests alone do not certify external API behavior.
+This deterministic run validates the CLI/report path and runtime without credentials. The optional live Groq smoke-test cell verifies a small authenticated batch run; the separate full-scale live retest above validates provider behavior on 100 leads. Mocked tests alone do not certify external API behavior.
 
 ## Phase 8 - Documentation and polish
 
@@ -189,7 +194,7 @@ if (-not $readme.Contains('directional')) { throw 'README must describe aggregat
 'README sections OK'
 ```
 
-Confirm the README explains CLI arguments and limitations; review score explanations, flagged records, and example drafts as an analyst. Aggregate statistics must be described as directional—not proof of conversion or revenue. The notebook's **Phases 6-9 acceptance checks** cell provides offline report, end-to-end CLI, documentation, and submission archive verification.
+Confirm the README explains how to run the CLI, the rubric, and limitations; review score explanations, flagged records, and example drafts as an analyst. Render/print the README to PDF using a consistent page setup and confirm it is no more than one page. Aggregate statistics must be described as directional—not proof of conversion or revenue. The notebook's **Phases 6-9 acceptance checks** cell provides offline report, end-to-end CLI, documentation, and submission archive verification.
 
 ## Phase 9 - Submission package
 
@@ -262,4 +267,4 @@ Move-Item -LiteralPath $buildPath -Destination $archivePath -Force
 'Verified archive published as lead-qualifier-submission.zip'
 ```
 
-The submitted `output_report.json` is the deterministic, 100-lead report (`llm_model: deterministic-only`). A separate five-lead live Groq smoke test passed; full-scale live-provider throughput was not part of this package verification.
+The submitted `output_report.json` is the validated live 100-lead report (`llm_model: openai/gpt-oss-20b`), with LLM reasoning for every lead and zero errors. Scores, decisions, and priorities exactly match the deterministic baseline. A deterministic offline report remains reproducible with `--no-llm`.

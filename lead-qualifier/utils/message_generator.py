@@ -1,141 +1,108 @@
-"""Generate human-reviewable first-touch drafts for qualified leads."""
+"""Generate fact-grounded first-touch drafts for qualified leads."""
 
+import hashlib
 from typing import Dict, Optional, Sequence, Tuple
 
 from utils.models import Lead, LeadScore
 
 
-TEMPLATES = {
-    "qualified_first_touch": """Hi {name},
+OUTREACH_VARIANTS = (
+    (
+        "fact_first",
+        """Hi {name},
 
-I noticed {company_context}.{source_sentence}
-If {pain_point} is a priority for your team, our {value_prop} may be relevant.
-Would you be open to a brief conversation to see whether it could be a fit?
+I noticed {company} in our lead records ({record_details}).
+Would you be open to a short introductory conversation to see if there may be a fit?
 
 Best,
-[Your Name]"""
-}
+[Your Name]""",
+    ),
+    (
+        "question_first",
+        """Hi {name},
+
+Would a short introductory conversation be useful? The lead record lists {company} ({record_details}).
+If so, could you share a suitable time?
+
+Best,
+[Your Name]""",
+    ),
+    (
+        "direct_context",
+        """Hi {name},
+
+I'm reaching out about {company}. Our record includes: {record_details}.
+If you're open to an introduction, could we set up a brief call to explore whether there may be a fit?
+
+Best,
+[Your Name]""",
+    ),
+)
 
 
-INDUSTRY_CONFIG = {
-    "SaaS": {
-        "pain_point": "scaling customer acquisition efficiently",
-        "value_prop": "automated lead qualification platform",
-    },
-    "FinTech": {
-        "pain_point": "compliance and fraud detection",
-        "value_prop": "real-time transaction monitoring",
-    },
-    "HealthTech": {
-        "pain_point": "patient data security and interoperability",
-        "value_prop": "healthcare data platform",
-    },
-    "Cybersecurity": {
-        "pain_point": "threat detection and response time",
-        "value_prop": "security analytics",
-    },
-    "Finance": {
-        "pain_point": "risk assessment and portfolio optimization",
-        "value_prop": "predictive analytics for financial services",
-    },
-    "Healthcare": {
-        "pain_point": "operational efficiency and patient outcomes",
-        "value_prop": "healthcare analytics platform",
-    },
-    "Manufacturing": {
-        "pain_point": "supply chain optimization and quality control",
-        "value_prop": "manufacturing intelligence",
-    },
-    "Retail": {
-        "pain_point": "customer personalization and inventory management",
-        "value_prop": "retail analytics and demand forecasting",
-    },
-    "Logistics": {
-        "pain_point": "route optimization and delivery tracking",
-        "value_prop": "logistics optimization platform",
-    },
-    "EdTech": {
-        "pain_point": "student engagement and learning outcomes",
-        "value_prop": "adaptive learning platform",
-    },
-    "Marketing": {
-        "pain_point": "campaign attribution and ROI optimization",
-        "value_prop": "marketing analytics dashboard",
-    },
-    "Consulting": {
-        "pain_point": "client delivery efficiency and knowledge management",
-        "value_prop": "consulting project intelligence",
-    },
-    "Real Estate": {
-        "pain_point": "property valuation and market analysis",
-        "value_prop": "real estate analytics platform",
-    },
-    "Energy": {
-        "pain_point": "grid optimization and renewable integration",
-        "value_prop": "energy analytics platform",
-    },
-    "default": {
-        "pain_point": "business growth and efficiency",
-        "value_prop": "business intelligence platform",
-    },
-}
+def get_outreach_variant_id(lead: Lead, lead_id: Optional[str] = None) -> str:
+    """Choose a reproducible message structure for a stable lead identifier."""
+    variant_key = lead_id
+    if variant_key is None:
+        variant_key = "\x1f".join(
+            (
+                lead.name,
+                lead.company,
+                str(lead.company_size),
+                lead.industry,
+                lead.source,
+                (
+                    lead.last_interaction_date.isoformat()
+                    if lead.last_interaction_date
+                    else ""
+                ),
+            )
+        )
+    digest = hashlib.sha256(variant_key.encode("utf-8")).digest()
+    variant_index = int.from_bytes(digest[:4], "big") % len(OUTREACH_VARIANTS)
+    return OUTREACH_VARIANTS[variant_index][0]
 
 
-SOURCE_DETAILS = {
-    "Inbound demo request": "requested a demo",
-    "Referral": "was referred to us",
-    "Sales call": "spoke with our team",
-    "Webinar attendee": "attended our webinar",
-    "Content download": "downloaded our content",
-    "LinkedIn outreach": "connected on LinkedIn",
-}
-
-
-def get_industry_config(industry: str) -> Dict[str, str]:
-    """Get the configured industry-specific pain point and value proposition."""
-    return INDUSTRY_CONFIG.get(industry, INDUSTRY_CONFIG["default"])
-
-
-def get_source_detail(source: str) -> Optional[str]:
-    """Return a known source description without inventing engagement details."""
-    return SOURCE_DETAILS.get(source)
-
-
-def generate_outreach(lead: Lead, score: LeadScore) -> Optional[str]:
-    """Return a qualified-lead draft, or None when outreach is not appropriate."""
+def generate_outreach(
+    lead: Lead,
+    score: LeadScore,
+    lead_id: Optional[str] = None,
+) -> Optional[str]:
+    """Return a qualified-lead draft grounded only in supplied lead details."""
     if score.decision != "QUALIFIED":
         return None
 
-    company_context = lead.company
-    details = []
+    record_details = []
     if lead.industry:
-        details.append(lead.industry)
+        record_details.append(f"{lead.industry} industry")
     if lead.company_size is not None:
-        details.append(f"approximately {lead.company_size} employees")
-    if details:
-        company_context = f"{company_context} ({', '.join(details)})"
+        record_details.append(
+            f"approximately {lead.company_size} employees"
+        )
+    details = "; ".join(record_details) or "the details provided"
+    if lead.source:
+        details = f"{details}; source: {lead.source}"
 
-    source_detail = get_source_detail(lead.source)
-    source_sentence = (
-        f" I saw that your team {source_detail}." if source_detail else ""
+    variant_id = get_outreach_variant_id(lead, lead_id)
+    template = next(
+        template
+        for candidate_id, template in OUTREACH_VARIANTS
+        if candidate_id == variant_id
     )
-    industry_config = get_industry_config(lead.industry)
-    return TEMPLATES["qualified_first_touch"].format(
+    return template.format(
         name=lead.name or "there",
-        company_context=company_context,
-        source_sentence=source_sentence,
-        pain_point=industry_config["pain_point"],
-        value_prop=industry_config["value_prop"],
+        company=lead.company or "your company",
+        record_details=details,
     )
 
 
 def generate_all_outreach(
     leads_with_scores: Sequence[Tuple[Lead, LeadScore]],
 ) -> Dict[Tuple[str, str], str]:
-    """Generate drafts only for qualified leads, keyed by name and company."""
+    """Generate qualified drafts keyed by name and company."""
     messages = {}
-    for lead, score in leads_with_scores:
-        message = generate_outreach(lead, score)
+    for index, (lead, score) in enumerate(leads_with_scores):
+        message = generate_outreach(lead, score, f"lead-{index:06d}")
         if message is not None:
             messages[(lead.name, lead.company)] = message
     return messages

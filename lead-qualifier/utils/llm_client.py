@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import date
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -20,28 +21,27 @@ from utils.rubric_engine import score_leads_batch
 logger = logging.getLogger(__name__)
 
 
-BATCH_PROMPT = """You are a B2B sales analyst. For each lead, explain the deterministic
-qualification result and identify any human-review note. Do not recalculate or change
-the score, decision, or priority. Use only facts supplied in the input; do not infer
-customer interests, budgets, or facts that are not present.
+BATCH_PROMPT = """You are a B2B sales analyst. Explain the supplied deterministic
+qualification results without changing scores, decisions, or priorities. Use only
+facts in the input; do not infer interests, budgets, or other unsupported facts.
 
-Use this configured rubric to explain the supplied result:
+Use these rubric weights and thresholds to explain the supplied results:
 {rubric_summary}
 
-Return exactly one JSON object per lead in a JSON array, with these fields only:
-"lead_id", "reasoning", and "review_note". "lead_id" must exactly match the input.
-"reasoning" must be 1-3 concise sentences grounded in the supplied details and rubric
-factor scores. "review_note" must be a short note for a human reviewer, or an empty
-string when no additional review note is needed.
+Return one JSON object with a "results" array containing exactly {n} objects. Each
+object must contain only the string fields "lead_id", "reasoning", and "review_note".
+Preserve each input lead_id exactly once. Make reasoning one concise sentence grounded
+in the supplied details and factor scores. Give a short human-review note, or "".
 
-There are {n} leads. The input follows:
+Leads and deterministic factor scores:
 {leads_json}
 """
 
-STRICT_BATCH_PROMPT = """Return valid JSON only: a JSON array with exactly {n} objects.
-Each object must contain exactly the string fields "lead_id", "reasoning", and
-"review_note". Preserve every input lead_id exactly once. Do not include scores,
-decisions, priorities, markdown, or commentary.
+STRICT_BATCH_PROMPT = """Return valid JSON only: one object with a "results" array
+containing exactly {n} objects. Each result must contain only the string fields
+"lead_id", "reasoning", and "review_note". Preserve each input lead_id exactly once.
+Do not include scores, decisions, priorities, markdown, or commentary. Reasoning must
+be one concise sentence based only on the supplied data.
 
 Input:
 {leads_json}
@@ -66,6 +66,10 @@ class PartialLLMResponse(InvalidLLMResponse):
 class LLMProvider:
     """OpenAI-compatible chat-completion provider."""
 
+    request_attempts: int
+    last_finish_reason: str
+    last_validation_failure: Optional[str]
+
     def __init__(
         self,
         client: Any,
@@ -77,6 +81,9 @@ class LLMProvider:
         self.model = model
         self.timeout = timeout
         self.temperature = temperature
+        self.request_attempts = 0
+        self.last_finish_reason = "not_reported"
+        self.last_validation_failure = None
 
     def call_batch(
         self,
@@ -106,7 +113,15 @@ class LLMProvider:
             timeout=self.timeout,
         )
         try:
-            response_text = response.choices[0].message.content
+            choice = response.choices[0]
+            finish_reason = getattr(choice, "finish_reason", None)
+            self.last_finish_reason = (
+                finish_reason
+                if isinstance(finish_reason, str)
+                and finish_reason in {"stop", "length", "tool_calls", "content_filter"}
+                else "other" if finish_reason is not None else "not_reported"
+            )
+            response_text = choice.message.content
         except (AttributeError, IndexError, TypeError) as exc:
             raise InvalidLLMResponse("Provider response did not contain message text") from exc
         return self._parse_response(response_text, lead_ids)
@@ -115,10 +130,13 @@ class LLMProvider:
     def _format_rubric(config: Dict[str, Any]) -> str:
         return json.dumps(
             {
-                "factors": config.get("rubric", {}),
+                "factor_weights": {
+                    name: factor.get("weight")
+                    for name, factor in config.get("rubric", {}).items()
+                },
                 "thresholds": config.get("thresholds", {}),
             },
-            indent=2,
+            separators=(",", ":"),
         )
 
     @staticmethod
@@ -317,6 +335,7 @@ def _call_provider_with_retry(
     config: Dict[str, Any],
     strict_prompt: bool,
 ) -> List[Dict[str, str]]:
+    provider.request_attempts = getattr(provider, "request_attempts", 0) + 1
     return provider.call_batch(leads, scores, lead_ids, config, strict_prompt)
 
 
@@ -327,39 +346,76 @@ def call_llm_batch(
     provider: LLMProvider,
     config: Dict[str, Any],
 ) -> List[Dict[str, str]]:
-    """Call the provider, retrying malformed output once with a strict prompt."""
-    partial_results = None
-    try:
-        return _call_provider_with_retry(
-            provider, leads, scores, lead_ids, config, strict_prompt=False
-        )
-    except PartialLLMResponse as exc:
-        partial_results = exc.results
-        logger.warning(
-            "LLM response omitted %s leads; retrying with strict JSON instructions",
-            len(exc.missing_ids),
-        )
-    except InvalidLLMResponse:
-        logger.warning("LLM response schema invalid; retrying with strict JSON instructions")
-    try:
-        return _call_provider_with_retry(
-            provider, leads, scores, lead_ids, config, strict_prompt=True
-        )
-    except PartialLLMResponse as exc:
-        strict_by_id = {result["lead_id"]: result for result in exc.results}
-        initial_by_id = {
-            result["lead_id"]: result for result in (partial_results or [])
-        }
-        initial_by_id.update(strict_by_id)
-        return [
-            initial_by_id[lead_id]
-            for lead_id in lead_ids
-            if lead_id in initial_by_id
+    """Retry malformed output once, limiting partial retries to missing leads."""
+    provider.last_validation_failure = None
+    results_by_id: Dict[str, Dict[str, str]] = {}
+    failure_categories = []
+
+    for strict_prompt in (False, True):
+        remaining_ids = [
+            lead_id for lead_id in lead_ids if lead_id not in results_by_id
         ]
-    except InvalidLLMResponse:
-        if partial_results is not None:
-            return partial_results
-        raise
+        if not remaining_ids:
+            break
+        remaining_positions = [
+            index for index, lead_id in enumerate(lead_ids)
+            if lead_id in remaining_ids
+        ]
+        remaining_leads = [leads[index] for index in remaining_positions]
+        remaining_scores = [scores[index] for index in remaining_positions]
+        try:
+            batch_results = _call_provider_with_retry(
+                provider,
+                remaining_leads,
+                remaining_scores,
+                remaining_ids,
+                config,
+                strict_prompt=strict_prompt,
+            )
+        except PartialLLMResponse as exc:
+            results_by_id.update(
+                {result["lead_id"]: result for result in exc.results}
+            )
+            failure_categories.append("partial_response")
+            logger.warning(
+                "LLM response validation failed; retrying %s missing leads with strict JSON instructions",
+                len(exc.missing_ids),
+            )
+        except InvalidLLMResponse:
+            failure_categories.append("invalid_response")
+            logger.warning(
+                "LLM response schema invalid; retrying remaining leads with strict JSON instructions"
+            )
+        except Exception as exc:
+            if not strict_prompt:
+                raise
+            failure_categories.append(f"provider_{type(exc).__name__}")
+            logger.warning(
+                "Strict LLM response retry failed (%s); retaining previously valid results",
+                type(exc).__name__,
+            )
+            break
+        else:
+            results_by_id.update(
+                {result["lead_id"]: result for result in batch_results}
+            )
+            break
+
+    if failure_categories:
+        final_missing = [
+            lead_id for lead_id in lead_ids if lead_id not in results_by_id
+        ]
+        recovered = not final_missing
+        suffix = "recovered" if recovered else "unrecovered"
+        provider.last_validation_failure = (
+            f"{'+'.join(dict.fromkeys(failure_categories))}_{suffix}"
+        )
+
+    return [
+        results_by_id[lead_id]
+        for lead_id in lead_ids
+        if lead_id in results_by_id
+    ]
 
 
 def _error_description(exc: Exception) -> str:
@@ -418,11 +474,15 @@ def enrich_leads_with_llm(
     for start in range(0, len(leads), effective_batch_size):
         end = min(start + effective_batch_size, len(leads))
         batch_ids = [result["lead_id"] for result in results[start:end]]
+        provider.request_attempts = 0
+        provider.last_finish_reason = "not_reported"
+        provider.last_validation_failure = None
         logger.info(
             "Processing LLM batch %s (%s leads)",
             start // effective_batch_size + 1,
             end - start,
         )
+        batch_started = time.perf_counter()
         try:
             batch_results = call_llm_batch(
                 leads[start:end],
@@ -432,19 +492,47 @@ def enrich_leads_with_llm(
                 config,
             )
         except Exception as exc:
+            elapsed = time.perf_counter() - batch_started
             error = _error_description(exc)
-            logger.error("LLM batch failed: %s", error)
+            failure_category = (
+                "invalid_response"
+                if isinstance(exc, InvalidLLMResponse)
+                else f"provider_{type(exc).__name__}"
+            )
+            logger.error(
+                "LLM batch %s failed: elapsed_seconds=%.2f request_attempts=%s valid_leads=0/%s finish_reason=%s failure_category=%s",
+                start // effective_batch_size + 1,
+                elapsed,
+                provider.request_attempts,
+                end - start,
+                provider.last_finish_reason,
+                failure_category,
+            )
             for result in results[start:end]:
                 result["error"] = error
             continue
 
         by_id = {result["lead_id"]: result for result in batch_results}
+        missing_ids = []
         for result in results[start:end]:
             if result["lead_id"] in by_id:
                 result.update(by_id[result["lead_id"]])
             else:
-                result["error"] = (
-                    "No valid LLM enrichment returned after strict response retry"
-                )
+                missing_ids.append(result["lead_id"])
+                result["error"] = "LLM enrichment unavailable after bounded response retry"
+        elapsed = time.perf_counter() - batch_started
+        failure_category = provider.last_validation_failure
+        if missing_ids and failure_category is None:
+            failure_category = "missing_results_unrecovered"
+        logger.info(
+            "LLM batch %s completed: elapsed_seconds=%.2f request_attempts=%s valid_leads=%s/%s finish_reason=%s failure_category=%s",
+            start // effective_batch_size + 1,
+            elapsed,
+            provider.request_attempts,
+            len(by_id),
+            end - start,
+            provider.last_finish_reason,
+            failure_category or "none",
+        )
 
     return results

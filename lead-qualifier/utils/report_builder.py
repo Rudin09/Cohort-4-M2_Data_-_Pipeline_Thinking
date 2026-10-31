@@ -3,7 +3,7 @@
 import json
 from typing import List, Dict, Any
 from utils.models import LeadResult
-from utils.message_generator import generate_outreach
+from utils.message_generator import generate_outreach, get_outreach_variant_id
 
 
 def _build_deterministic_reasoning(lead_result: LeadResult) -> str:
@@ -41,6 +41,13 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     lead_ids = {
         id(lr): f"lead-{index:06d}" for index, lr in enumerate(results)
     }
+    ranked_results = sorted(
+        results,
+        key=lambda lr: (-lr.score.total_score, lead_ids[id(lr)]),
+    )
+    priority_ranks = {
+        id(lr): rank for rank, lr in enumerate(ranked_results, start=1)
+    }
     
     # Common rejection reasons
     rejection_reasons = {}
@@ -53,16 +60,17 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     common_reasons = [f"{reason} ({count})" for reason, count in 
                       sorted(rejection_reasons.items(), key=lambda x: -x[1])[:5]]
     
-    # Priority queue (sorted by score descending)
+    # Priority queue retains each lead's report-wide rank.
     priority_queue = [
         {
             "lead_id": lead_ids[id(lr)],
+            "priority_rank": priority_ranks[id(lr)],
             "name": lr.lead.name,
             "company": lr.lead.company,
             "score": lr.score.total_score,
             "priority": lr.score.priority
         }
-        for lr in sorted(results, key=lambda x: -x.score.total_score)
+        for lr in ranked_results
         if lr.score.decision == "QUALIFIED"
     ]
     
@@ -71,13 +79,20 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     for lr in results:
         lead_dict = lr.score.to_dict()
         lead_dict["lead_id"] = lead_ids[id(lr)]
+        lead_dict["priority_rank"] = priority_ranks[id(lr)]
         lead_dict["reasoning"] = _build_deterministic_reasoning(lr)
         if lr.llm_reasoning:
             lead_dict["llm_reasoning"] = lr.llm_reasoning
         if lr.llm_review_note:
             lead_dict["llm_review_note"] = lr.llm_review_note
-        outreach_message = generate_outreach(lr.lead, lr.score)
+        outreach_message = generate_outreach(
+            lr.lead, lr.score, lead_ids[id(lr)]
+        )
         lead_dict["outreach_message"] = outreach_message
+        if outreach_message is not None:
+            lead_dict["outreach_variant"] = get_outreach_variant_id(
+                lr.lead, lead_ids[id(lr)]
+            )
         lr.outreach_message = outreach_message
         leads_detail.append(lead_dict)
 
@@ -111,6 +126,10 @@ def build_report(results: List[LeadResult], metadata: Dict[str, Any]) -> Dict[st
     for lr in sample_results:
         sample_messages.append({
             "lead_id": lead_ids[id(lr)],
+            "priority_rank": priority_ranks[id(lr)],
+            "outreach_variant": get_outreach_variant_id(
+                lr.lead, lead_ids[id(lr)]
+            ),
             "lead": lr.lead.name,
             "company": lr.lead.company,
             "industry": lr.lead.industry,

@@ -1,18 +1,40 @@
-from utils.data_loader import load_leads
-from utils.rubric_engine import load_rubric, score_lead
-from utils.message_generator import generate_outreach, get_industry_config
 from datetime import date
 
-rubric = load_rubric('config.yaml')
-leads = load_leads('../leads_training.csv')
+from utils.data_loader import load_leads
+from utils.message_generator import (
+    OUTREACH_VARIANTS,
+    generate_outreach,
+    get_outreach_variant_id,
+)
+from utils.rubric_engine import load_rubric, score_lead
 
-print('Test 5.4 - Industry-Specific Personalization: PASS')
-industries_tested = set()
+
+rubric = load_rubric("config.yaml")
+leads = load_leads("../leads_training.csv")
+qualified = None
 for lead in leads:
-    if lead.industry not in industries_tested:
-        industries_tested.add(lead.industry)
-        score = score_lead(lead, rubric, reference_date=date(2024, 1, 20))
-        msg = generate_outreach(lead, score)
-        cfg = get_industry_config(lead.industry)
-        print(f'  {lead.industry}: pain="{cfg["pain_point"]}" value="{cfg["value_prop"]}" ref="{cfg["reference_customer"]}"')
-        print(f'    Message contains industry: {lead.industry in msg}')
+    score = score_lead(lead, rubric, reference_date=date(2024, 1, 20))
+    if score.decision == "QUALIFIED":
+        qualified = lead, score
+        break
+if qualified is None:
+    raise ValueError("Training data has no qualified leads for message testing.")
+
+lead, score = qualified
+messages = {}
+for index in range(100):
+    lead_id = f"lead-{index:06d}"
+    variant_id = get_outreach_variant_id(lead, lead_id)
+    messages.setdefault(
+        variant_id, generate_outreach(lead, score, lead_id)
+    )
+
+assert set(messages) == {variant_id for variant_id, _ in OUTREACH_VARIANTS}
+for variant_id, message in messages.items():
+    assert lead.name in message
+    assert lead.company in message
+    if lead.industry:
+        assert lead.industry in message
+    if lead.source:
+        assert lead.source in message
+    print(f"{variant_id}:\n{message}\n")
