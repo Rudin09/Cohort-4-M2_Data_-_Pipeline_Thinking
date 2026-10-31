@@ -62,11 +62,12 @@ pip install -r requirements.txt
 
 ### 1.3 Required Dependencies (requirements.txt)
 ```
-pandas>=2.0
+pandas>=2.0.0
 pyyaml>=6.0
-requests>=2.31
-tenacity>=8.2  # Retry logic
-python-dotenv>=1.0  # Environment variables
+requests>=2.31.0
+tenacity>=8.2.0  # Retry logic
+python-dotenv>=1.0.0  # Environment variables
+groq>=0.9.0
 ```
 
 ---
@@ -149,9 +150,9 @@ thresholds:
   rejected_below: 5.0
 
 llm:
-  provider: "groq"  # or openai, gemini, anthropic
-  model: "llama-3.1-70b-versatile"
-  batch_size: 15
+  provider: "groq"
+  model: "openai/gpt-oss-20b"
+  batch_size: 5
   timeout: 30
   temperature: 0.3
 ```
@@ -274,6 +275,7 @@ def score_lead(lead: Lead, rubric: dict) -> LeadScore:
 import argparse
 import logging
 from pathlib import Path
+from typing import Optional
 
 def setup_logging():
     logging.basicConfig(
@@ -286,7 +288,12 @@ def main():
     parser.add_argument("--input", required=True, help="Input CSV file")
     parser.add_argument("--output", default="output_report.json", help="Output JSON file")
     parser.add_argument("--config", default="config.yaml", help="Rubric config file")
-    parser.add_argument("--batch-size", type=int, default=15, help="LLM batch size")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override the LLM batch size configured in config.yaml",
+    )
     args = parser.parse_args()
 
     setup_logging()
@@ -295,9 +302,10 @@ def main():
 
 ### 3.4 Batch Processing
 ```python
-def process_batch(leads: List[Lead], batch_size: int = 15) -> List[LeadResult]:
+def enrich_leads_with_llm(leads: List[Lead], batch_size: Optional[int] = None) -> List[dict]:
     """Enrich rubric-scored leads in batches for LLM calls."""
     # Score each lead deterministically before calling the LLM
+    # Use the configured batch size (5 by default), unless overridden by the CLI
     # Send each batch of lead details and rubric results in one API call
     # Parse and validate explanations, matching each response to its lead
     # Return results without allowing LLM output to change score or decision
@@ -341,7 +349,7 @@ def get_provider(config: dict) -> LLMProvider:
 ```python
 BATCH_PROMPT = """
 You are a B2B sales qualification expert. Analyze these {n} leads and for each provide:
-1. A concise explanation (2-3 sentences) for the score and decision already calculated by the rubric, referencing specific lead details
+1. A concise, fact-grounded sentence explaining the score and decision already calculated by the rubric
 2. Any missing or ambiguous information a salesperson should verify
 
 Rubric:
@@ -425,7 +433,7 @@ def generate_outreach(lead: Lead, score: LeadScore, lead_id: str) -> Optional[st
     "processed_at": "2024-01-20T10:30:00Z",
     "total_leads": 100,
     "rubric_version": "1.0",
-    "llm_model": "llama-3.1-70b-versatile"
+    "llm_model": "openai/gpt-oss-20b"
   },
   "summary": {
     "total_processed": 100,
@@ -447,36 +455,40 @@ def generate_outreach(lead: Lead, score: LeadScore, lead_id: str) -> Optional[st
       "industry": "SaaS",
       "source": "Inbound demo request",
       "last_interaction_date": "2024-01-15",
+      "lead_id": "lead-000000",
       "score": 10.0,
       "decision": "QUALIFIED",
       "priority": "HIGH",
-      "reasoning": "Strong fit: 50-person SaaS company with recent inbound demo request. Core vertical, ideal size range, high-intent signal.",
+      "priority_rank": 1,
+      "reasoning": "The deterministic rubric assigned 10.0/10 and QUALIFIED. Factor scores: budget signals 10/10, company size 10/10, industry 10/10, recency 10/10, source quality 10/10.",
+      "llm_reasoning": "CloudScale AI is a 50-person SaaS company with a recent inbound demo request, matching the rubric's strongest fit signals.",
       "outreach_message": "Hi Alice, I noticed CloudScale AI recently requested a demo..."
     }
   ],
   "priority_queue": [
-    {"name": "Alice Chen", "company": "CloudScale AI", "score": 10.0, "priority": "HIGH"},
-    {"name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 9.2, "priority": "HIGH"}
+    {"lead_id": "lead-000000", "priority_rank": 1, "name": "Alice Chen", "company": "CloudScale AI", "score": 10.0, "priority": "HIGH"},
+    {"lead_id": "lead-000001", "priority_rank": 2, "name": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "score": 9.2, "priority": "HIGH"}
   ],
   "sample_outreach_messages": [
-    {"lead": "Alice Chen", "message": "Hi Alice, I noticed CloudScale AI recently requested a demo..."},
-    {"lead": "Test_HighValueMatch", "message": "..."}
+    {"lead_id": "lead-000000", "priority_rank": 1, "outreach_variant": "fact_first", "lead": "Alice Chen", "company": "CloudScale AI", "industry": "SaaS", "source": "Inbound demo request", "priority": "HIGH", "message": "Hi Alice, I noticed CloudScale AI recently requested a demo..."},
+    {"lead_id": "lead-000001", "priority_rank": 2, "outreach_variant": "question_first", "lead": "Test_HighValueMatch", "company": "Perfect Fit Enterprise", "industry": "FinTech", "source": "Referral", "priority": "HIGH", "message": "..."}
   ],
   "flagged_for_review": [
     {"name": "Test_MissingSize", "company": "Test Inc", "issue": "Missing company_size", "score": 5.2},
     {"name": "Test_Borderline", "company": "Example Co", "issue": "Borderline score; human qualification review required", "score": 7.2}
   ],
   "errors": [
-    {"lead": "Test_NameOnly", "error": "Missing required fields: name, company_size, industry, source, last_interaction_date"}
+    {"lead_id": "lead-000099", "lead": "Test_ProviderFailure", "company": "Example Co", "error": "LLM enrichment unavailable after bounded response retry"}
   ]
 }
 ```
 
 **Key Format Notes:**
 - `score` is 1-10, matching the project brief; show one decimal place
-- `priority_queue` contains qualified leads sorted by score descending; review leads are presented separately for human follow-up
+- `leads` contains every input record; `decision: REJECTED` identifies disqualified leads, and `summary` reports the rejected count
+- `priority_queue` contains qualified leads sorted by score descending, with report-wide ranks preserved; review leads are separately exposed in `flagged_for_review`
 - `flagged_for_review`: includes all REVIEW decisions, plus other leads with missing or ambiguous data that can still be scored
-- `errors`: leads that couldn't be processed (missing required fields)
+- `errors`: processing or LLM-enrichment failures; missing required name/company fields are still processed and routed to REVIEW
 - `decision` and `priority` are determined by the rubric engine. LLM-generated reasoning must not override them.
 
 ### 6.2 Report Builder (utils/report_builder.py)
@@ -666,7 +678,7 @@ Phase 9 packaging verification (2026-10-31): the validated live 100-lead report 
 ## Key Decisions to Make Early
 
 1. **LLM Provider**: Choose one and stick with it (Groq recommended for speed/free tier)
-2. **Batch Size**: 10-20 leads per API call (balance context window vs. calls)
+2. **Batch Size**: Benchmark fixed inputs for the configured model; the verified default is 5 leads per API call. Override only after measuring valid-response coverage and runtime.
 3. **Rubric Weights**: Define before coding - hard to change later
 4. **Decision Thresholds**: Use the configured 1-10 scale consistently: qualified ≥ 7.5, review ≥ 5.0 and < 7.5, rejected < 5.0
 5. **Output Format**: JSON (structured) or CSV (spreadsheet-friendly)
